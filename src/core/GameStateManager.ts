@@ -1,0 +1,1 @@
+// manages current game state
