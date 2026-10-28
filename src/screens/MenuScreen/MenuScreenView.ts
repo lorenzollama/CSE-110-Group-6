@@ -1,25 +1,35 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
-import { STAGE_WIDTH } from "../../constants.ts";
+import type { Stage } from "konva/lib/Stage";
 
 /**
  * MenuScreenView - Renders the menu screen
  */
 export class MenuScreenView implements View {
 	private group: Konva.Group;
+	private background: Konva.Rect;
 
-	constructor(onStartClick: () => void) {
+	constructor(stage: Stage, onStartClick: () => void) {
 		this.group = new Konva.Group({ visible: true });
+		
+		this.background = new Konva.Rect({
+			x: 0,
+			y: 0,
+			width: stage.width(),
+			height: stage.height(),
+			fill: "black",
+			listening: false,
+		});
+		this.group.add(this.background);
 
 		// Title text
 		const title = new Konva.Text({
-			x: STAGE_WIDTH / 2,
+			x: stage.width() / 2,
 			y: 150,
-			text: "LEMON CLICKER",
-			fontSize: 48,
+			text: "Minigame 1",
+			fontSize: 64,
 			fontFamily: "Arial",
-			fill: "yellow",
-			stroke: "orange",
+			stroke: "white",
 			strokeWidth: 2,
 			align: "center",
 		});
@@ -29,7 +39,7 @@ export class MenuScreenView implements View {
 
 		const startButtonGroup = new Konva.Group();
 		const startButton = new Konva.Rect({
-			x: STAGE_WIDTH / 2 - 100,
+			x: stage.width() / 2 - 100,
 			y: 300,
 			width: 200,
 			height: 60,
@@ -39,7 +49,7 @@ export class MenuScreenView implements View {
 			strokeWidth: 3,
 		});
 		const startText = new Konva.Text({
-			x: STAGE_WIDTH / 2,
+			x: stage.width() / 2,
 			y: 315,
 			text: "START GAME",
 			fontSize: 24,

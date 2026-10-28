@@ -1,1 +1,0 @@
-// individual light object

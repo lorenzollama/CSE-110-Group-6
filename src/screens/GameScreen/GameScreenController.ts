@@ -1,3 +1,5 @@
+import type { Stage } from "konva/lib/Stage";
+import type { Coordinates } from "../../objects/Grid.ts";
 import { ScreenController } from "../../types.ts";
 import type { ScreenSwitcher } from "../../types.ts";
 import { GameScreenModel } from "./GameScreenModel.ts";
@@ -10,19 +12,13 @@ export class GameScreenController extends ScreenController {
 	private model: GameScreenModel;
 	private view: GameScreenView;
 	private screenSwitcher: ScreenSwitcher;
-	private gameTimer: number | null = null;
 
-	private squeezeSound: HTMLAudioElement;
-
-	constructor(screenSwitcher: ScreenSwitcher) {
+	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
 
 		this.model = new GameScreenModel();
-		this.view = new GameScreenView(() => this.handleLemonClick());
-
-		// TODO: Task 4 - Initialize squeeze sound audio
-		this.squeezeSound = new Audio('/squeeze.mp3')
+		this.view = new GameScreenView(stage);
 	}
 
 	/**
@@ -35,22 +31,15 @@ export class GameScreenController extends ScreenController {
 		// Update view
 		this.view.updateScore(this.model.getScore());
 		this.view.show();
-	}
 
-	/**
-	 * Handle lemon click event
-	 */
-	private handleLemonClick(): void {
-		// Update model
-		this.model.incrementScore();
-
-		// Update view
-		this.view.updateScore(this.model.getScore());
-		this.view.randomizeLemonPosition();
-
-		// TODO: Task 4 - Play the squeeze sound
-		this.squeezeSound.currentTime = 0;
-		this.squeezeSound.play();
+		// example sequence, pass coords into grid
+		const sequence: Coordinates[] = [
+			{ row: 0, col: 0 },
+			{ row: 0, col: 1 },
+			{ row: 1, col: 1 },
+			{ row: 2, col: 2 },
+		];
+		this.view.getGrid().blink(sequence);
 	}
 
 	/**

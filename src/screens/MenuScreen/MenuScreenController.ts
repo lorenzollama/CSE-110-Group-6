@@ -1,3 +1,4 @@
+import type { Stage } from "konva/lib/Stage";
 import { ScreenController } from "../../types.ts";
 import type { ScreenSwitcher } from "../../types.ts";
 import { MenuScreenView } from "./MenuScreenView.ts";
@@ -9,10 +10,10 @@ export class MenuScreenController extends ScreenController {
 	private view: MenuScreenView;
 	private screenSwitcher: ScreenSwitcher;
 
-	constructor(screenSwitcher: ScreenSwitcher) {
+	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
-		this.view = new MenuScreenView(() => this.handleStartClick());
+		this.view = new MenuScreenView(stage, () => this.handleStartClick());
 	}
 
 	/**

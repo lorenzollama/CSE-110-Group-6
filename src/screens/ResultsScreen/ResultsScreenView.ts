@@ -1,6 +1,6 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
-import { STAGE_WIDTH } from "../../constants.ts";
+import type { Stage } from "konva/lib/Stage";
 
 /**
  * ResultsScreenView - Renders the results screen
@@ -9,12 +9,12 @@ export class ResultsScreenView implements View {
 	private group: Konva.Group;
 	private finalScoreText: Konva.Text;
 
-	constructor(onPlayAgainClick: () => void) {
+	constructor(stage: Stage, onPlayAgainClick: () => void) {
 		this.group = new Konva.Group({ visible: false });
 
 		// "Game Over" title
 		const title = new Konva.Text({
-			x: STAGE_WIDTH / 2,
+			x: stage.width() / 2,
 			y: 100,
 			text: "GAME OVER!",
 			fontSize: 48,
@@ -27,7 +27,7 @@ export class ResultsScreenView implements View {
 
 		// Final score display
 		this.finalScoreText = new Konva.Text({
-			x: STAGE_WIDTH / 2,
+			x: stage.width() / 2,
 			y: 200,
 			text: "Final Score: 0",
 			fontSize: 36,
@@ -40,7 +40,7 @@ export class ResultsScreenView implements View {
 		// Play Again button (grouped) - moved down to make room for leaderboard
 		const playAgainButtonGroup = new Konva.Group();
 		const playAgainButton = new Konva.Rect({
-			x: STAGE_WIDTH / 2 - 100,
+			x: stage.width() / 2 - 100,
 			y: 480,
 			width: 200,
 			height: 60,
@@ -50,7 +50,7 @@ export class ResultsScreenView implements View {
 			strokeWidth: 3,
 		});
 		const playAgainText = new Konva.Text({
-			x: STAGE_WIDTH / 2,
+			x: stage.width() / 2,
 			y: 495,
 			text: "PLAY AGAIN",
 			fontSize: 24,

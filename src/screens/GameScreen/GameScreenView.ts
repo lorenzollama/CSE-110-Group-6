@@ -1,121 +1,109 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
-import { STAGE_WIDTH, STAGE_HEIGHT } from "../../constants.ts";
+import { Grid, type GridOptions } from "../../objects/Grid.ts";
 
-/**
- * GameScreenView - Renders the game UI using Konva
- */
+const ROWS = 3;
+const COLS = 3;
+const SQUARE_SIZE = 100;
+const GAP = 12;
+const SCORE_GAP = 24;
+
 export class GameScreenView implements View {
 	private group: Konva.Group;
-	private lemonImage: Konva.Image | Konva.Circle | null = null;
+	private grid: Grid;
 	private scoreText: Konva.Text;
-	private timerText: Konva.Text;
+	private stage: Konva.Stage;
+	private background: Konva.Rect;
 
-	constructor(onLemonClick: () => void) {
+	constructor(stage: Konva.Stage) {
+		this.stage = stage;
 		this.group = new Konva.Group({ visible: false });
 
-		// Background
-		const bg = new Konva.Rect({
+		this.background = new Konva.Rect({
 			x: 0,
 			y: 0,
-			width: STAGE_WIDTH,
-			height: STAGE_HEIGHT,
-			fill: "#87CEEB", // Sky blue
+			width: stage.width(),
+			height: stage.height(),
+			fill: "#white",
+			listening: false,
 		});
-		this.group.add(bg);
+		this.group.add(this.background);
 
-		// Score display (top-left)
 		this.scoreText = new Konva.Text({
-			x: 20,
-			y: 20,
 			text: "Score: 0",
 			fontSize: 32,
 			fontFamily: "Arial",
-			fill: "black",
-		});
+			fill: "white",
+			});
 		this.group.add(this.scoreText);
 
-		// Timer display (top-right)
-		this.timerText = new Konva.Text({
-			x: STAGE_WIDTH - 150,
-			y: 20,
-			text: "Time: 60",
-			fontSize: 32,
-			fontFamily: "Arial",
-			fill: "red",
-		});
-		this.group.add(this.timerText);
+		const cfg: GridOptions = {
+			rows: ROWS,
+			cols: COLS,
+			squareSize: SQUARE_SIZE,
+			gap: GAP,
+			fill: "white",
+			onSquareClick: (_square, row, col) => {
+				console.log(`Clicked square (${row}, ${col})`);
+			},
+		};
 
-		// TODO: Task 2 - Load and display lemon image using Konva.Image.fromURL()
-		// Placeholder circle (remove this when implementing the image)
-		Konva.Image.fromURL("/lemon.png", (image) => {
-			image.on("click", onLemonClick);
-			image.offsetX(image.width() / 2);
-			image.offsetY(image.height() / 2);
-			image.x(STAGE_WIDTH / 2);
-			image.y(STAGE_HEIGHT / 2);
-			image.scale({ x: 0.5, y: 0.5 });
-			this.lemonImage = image;
-			this.group.add(this.lemonImage);
-		});
+		this.grid = new Grid(this.group, cfg);
+		this.centerLayout();
 	}
 
-	/**
-	 * Update score display
-	 */
+	private centerLayout(): void {
+		const gridWidth = COLS * SQUARE_SIZE + (COLS - 1) * GAP;
+		const gridHeight = ROWS * SQUARE_SIZE + (ROWS - 1) * GAP;
+
+		// keep the background sized to the window
+		this.background.size({
+			width: this.stage.width(),
+			height: this.stage.height(),
+		});
+
+		// center the score and grid as one vertical layout
+		const totalHeight = this.scoreText.height() + SCORE_GAP + gridHeight;
+
+		const startY = (this.stage.height() - totalHeight) / 2;
+
+		this.scoreText.position({
+			x: (this.stage.width() - this.scoreText.width()) / 2,
+			y: startY,
+		});
+
+		this.grid.getGroup().position({
+			x: (this.stage.width() - gridWidth) / 2,
+			y: startY + this.scoreText.height() + SCORE_GAP,
+		});
+
+		this.group.getLayer()?.batchDraw();
+	}
+
 	updateScore(score: number): void {
 		this.scoreText.text(`Score: ${score}`);
-		this.group.getLayer()?.draw();
+		this.centerLayout();
 	}
 
-	/**
-	 * Randomize lemon position
-	 */
-	randomizeLemonPosition(): void {
-		if (!this.lemonImage) return;
-
-		// Define safe boundaries (avoid edges)
-		const padding = 100;
-		const minX = padding;
-		const maxX = STAGE_WIDTH - padding;
-		const minY = padding;
-		const maxY = STAGE_HEIGHT - padding;
-
-		// Generate random position
-		const randomX = Math.random() * (maxX - minX) + minX;
-		const randomY = Math.random() * (maxY - minY) + minY;
-
-		// Update lemon position
-		this.lemonImage.x(randomX);
-		this.lemonImage.y(randomY);
-		this.group.getLayer()?.draw();
-	}
-
-	/**
-	 * Update timer display
-	 */
-	updateTimer(timeRemaining: number): void {
-		this.timerText.text(`Time: ${timeRemaining}`);
-		this.group.getLayer()?.draw();
-	}
-
-	/**
-	 * Show the screen
-	 */
 	show(): void {
 		this.group.visible(true);
-		this.group.getLayer()?.draw();
+		this.centerLayout();
 	}
 
-	/**
-	 * Hide the screen
-	 */
 	hide(): void {
 		this.group.visible(false);
-		this.group.getLayer()?.draw();
+		this.group.getLayer()?.batchDraw();
 	}
 
 	getGroup(): Konva.Group {
 		return this.group;
+	}
+
+	getGrid(): Grid {
+		return this.grid;
+	}
+
+	resize(): void {
+		this.centerLayout();
 	}
 }

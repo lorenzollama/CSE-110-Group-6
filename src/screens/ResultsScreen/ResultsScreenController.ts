@@ -1,3 +1,4 @@
+import type { Stage } from "konva/lib/Stage";
 import { ScreenController } from "../../types.ts";
 import type { ScreenSwitcher } from "../../types.ts";
 import {
@@ -15,11 +16,11 @@ export class ResultsScreenController extends ScreenController {
 
 	private gameOverSound: HTMLAudioElement;
 
-	constructor(screenSwitcher: ScreenSwitcher) {
+	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
 		this.model = new ResultsScreenModel();
-		this.view = new ResultsScreenView(() => this.handlePlayAgainClick());
+		this.view = new ResultsScreenView(stage, () => this.handlePlayAgainClick());
 
 		// TODO: Task 4 - Initialize game over sound audio
 		this.gameOverSound = new Audio('/gameover.mp3')
