@@ -82,6 +82,12 @@ export class GameScreenController extends ScreenController {
 		});
 	}
 
+	getRandomCoordinates(): Coordinates {
+		const row = Math.floor(Math.random() * this.view.getGrid().getRowCount());
+		const col = Math.floor(Math.random() * this.view.getGrid().getColCount());
+		return { row, col };
+	}
+
 	/**
 	 * Get final score
 	 */

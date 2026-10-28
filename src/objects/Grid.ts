@@ -25,13 +25,15 @@ export interface Coordinates {
 export class Grid {
 	private squares: Square[][] = [];
 	private group: Konva.Group;
+	private rows: number;
+	private cols: number;
 
 	constructor(
 		parent: Konva.Container,
 		options: GridOptions = {}
 	) {
-		const rows = options.rows ?? 3;
-		const cols = options.cols ?? 3;
+		this.rows = options.rows ?? 3;
+		this.cols = options.cols ?? 3;
 		const squareSize = options.squareSize ?? 80;
 		const gap = options.gap ?? 10;
 
@@ -44,10 +46,10 @@ export class Grid {
 		parent.add(this.group);
 
 		// create squares
-		for (let row = 0; row < rows; row++) {
+		for (let row = 0; row < this.rows; row++) {
 			this.squares[row] = [];
 
-			for (let col = 0; col < cols; col++) {
+			for (let col = 0; col < this.cols; col++) {
 				const square = new Square(this.group, {
 					x: col * (squareSize + gap),
 					y: row * (squareSize + gap),
@@ -78,6 +80,14 @@ export class Grid {
 	// get squares (2d array)
 	getSquares(): Square[][] {
 		return this.squares;
+	}
+
+	getRowCount(): number {
+		return this.rows;
+	}
+
+	getColCount(): number {
+		return this.cols;
 	}
 
 	/**
