@@ -27,6 +27,8 @@
     "noUncheckedSideEffectImports": true
   },
   "include": [
-    "src"
+    "src",
+    "minigames",
+    "tests"
   ]
 }

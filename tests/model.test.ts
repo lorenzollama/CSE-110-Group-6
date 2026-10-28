@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
-import { slideLine } from "../src/minigame2/model.ts";
+import { expect, it } from "vitest";
+import { slideLine } from "../minigames/minigame2/model.ts";
 
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
@@ -14,7 +14,7 @@ const cases: Array<[number[], number[], number]> = [
 ];
 
 for (const [input, expected, gained] of cases) {
-  assert.deepEqual(slideLine(input), { line: expected, gained });
+  it(`slideLine(${JSON.stringify(input)})`, () => {
+    expect(slideLine(input)).toEqual({ line: expected, gained });
+  });
 }
-
-console.log("slideLine ok");
