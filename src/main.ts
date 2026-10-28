@@ -1,24 +1,60 @@
 import Konva from "konva";
-import { STAGE_WIDTH, STAGE_HEIGHT } from "./constants.ts";
+import type { ScreenSwitcher, Screen } from "./types.ts";
 
-class App {
+/**
+ * Main Application - Coordinates all screens
+ *
+ * Shared skeleton: screens and minigames register their controllers here.
+ * Each screen has its own Konva.Group on the screen layer, and only one is
+ * visible at a time. Popups go on the popup layer so they draw on top.
+ */
+class App implements ScreenSwitcher {
 	private stage: Konva.Stage;
-	private layer: Konva.Layer;
+	private screenLayer: Konva.Layer;
+	private popupLayer: Konva.Layer;
 
 	constructor(container: string) {
-		// Initialize Konva stage (the main canvas)
+		// initialize Konva stage (the main canvas)
 		this.stage = new Konva.Stage({
 			container,
-			width: STAGE_WIDTH,
-			height: STAGE_HEIGHT,
+			width: window.innerWidth,
+			height: window.innerHeight,
 		});
 
-		// Create a layer (shapes and groups get added to this layer)
-		this.layer = new Konva.Layer();
-		this.stage.add(this.layer);
+		// screens go on the bottom layer, popups on the top layer
+		this.screenLayer = new Konva.Layer();
+		this.popupLayer = new Konva.Layer();
+		this.stage.add(this.screenLayer);
+		this.stage.add(this.popupLayer);
 
-		// Draw the layer (render everything to the canvas)
-		this.layer.draw();
+		// TODO: create screen controllers and add their groups to screenLayer
+		this.screenLayer.add(new Konva.Text({
+			x: 20,
+			y: 20,
+			text: "CSE 110 Group 6 - shared skeleton",
+			fontSize: 24,
+			fontFamily: "Arial",
+		}));
+		this.screenLayer.draw();
+
+		window.addEventListener("resize", () => {
+			this.stage.width(window.innerWidth);
+			this.stage.height(window.innerHeight);
+		});
+	}
+
+	/**
+	 * Switch to a different screen
+	 * Hides every screen, then shows only the requested one
+	 */
+	switchToScreen(screen: Screen): void {
+		// TODO: hide all screen controllers, then show the requested one
+		switch (screen.type) {
+			case "menu":
+			case "game":
+			case "result":
+				break;
+		}
 	}
 }
 
