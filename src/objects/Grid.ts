@@ -80,13 +80,21 @@ export class Grid {
 		return this.squares;
 	}
 
-	// blink squares in order, called in controller
-	blink(coordinates: Coordinates[]): void {
+	/**
+	 * Plays the signals in order and notifies the caller when playback ends
+	 *
+	 * @param coordinates the ordered light sequence to display
+	 * @param onComplete the optional callback invoked after playback finishes
+	 */
+	blink(coordinates: Coordinates[], onComplete?: () => void): void {
 		let index = 0;
 
 		// recursive functions
 		const blinkNext = () => {
-			if (index >= coordinates.length) return;
+			if (index >= coordinates.length) {
+				onComplete?.();
+				return;
+			}
 
 			const { row, col } = coordinates[index++];
 			const square = this.getSquare(row, col);

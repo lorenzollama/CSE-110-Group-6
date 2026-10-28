@@ -12,6 +12,7 @@ export interface SquareOptions {
 export class Square {
 	private rect: Konva.Rect;
 	private parent: Konva.Container;
+	private selectionFeedbackTimer?: ReturnType<typeof setTimeout>;
 
 	constructor(
 		parent: Konva.Container,
@@ -68,9 +69,37 @@ export class Square {
 	getFill(): string | CanvasGradient {
 		return this.rect.fill();
 	}
-	
-	// destroy square
+
+	/**
+	 * Briefly highlights the selected square with a yellow outline
+	 * Restarts the feedback timer when the square is selected again
+	 */
+	showSelectionFeedback(): void {
+		if (this.selectionFeedbackTimer !== undefined) {
+			clearTimeout(this.selectionFeedbackTimer);
+		}
+
+		this.rect.stroke("#ffd54f");
+        this.rect.strokeWidth(4);
+        this.parent.getLayer()?.batchDraw();
+
+        this.selectionFeedbackTimer = setTimeout(() => {
+			this.rect.stroke("");
+            this.rect.strokeWidth(2);
+            this.selectionFeedbackTimer = undefined;
+            this.parent.getLayer()?.batchDraw();
+		}, 200);
+	}
+
+	/**
+	 * Removes the square and cancels any pending selection feedback
+	 */
 	destroy(): void {
+		if (this.selectionFeedbackTimer !== undefined) {
+			clearTimeout(this.selectionFeedbackTimer);
+            this.selectionFeedbackTimer = undefined;
+		}
+
 		this.rect.destroy();
 		this.parent.getLayer()?.batchDraw();
 	}

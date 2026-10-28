@@ -13,23 +13,49 @@ export class GameScreenController extends ScreenController {
 	private view: GameScreenView;
 	private screenSwitcher: ScreenSwitcher;
 
+	/**
+	 * Creates the model and view and connects player selection
+	 * to sequence checking, light highlighting, and status messages
+	 *
+	 * @param screenSwitcher the service used to navigate between screens
+	 * @param stage the Konva stage displaying the game
+	 */
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
 
 		this.model = new GameScreenModel();
 		this.view = new GameScreenView(stage);
+		this.view.setSelectionHandler((row, col) => {
+			const result = this.model.checkSelection({ row, col });
+			if (result === "ignored") {
+				return;
+			}
+			this.view.showSelectionFeedback(row, col);
+
+			if (result === "correct") {
+				this.view.updateStatus("Correct! Keep Going.");
+			}
+			else if (result === "incorrect") {
+				this.view.updateStatus("Incorrect sequence. Attempt ended.");
+			}
+			else if (result === "complete") {
+				this.view.updateStatus("Sequence complete!");
+			}
+		});
 	}
 
 	/**
 	 * Start the game
+	 * Displays instructions and enables input after playback finishes
 	 */
 	startGame(): void {
 		// Reset model state
 		this.model.reset();
 
-		// Update view
+		// Update the score and display playback instructions
 		this.view.updateScore(this.model.getScore());
+		this.view.updateStatus("Watch the sequence.");
 		this.view.show();
 
 		// example sequence, pass coords into grid
@@ -39,7 +65,10 @@ export class GameScreenController extends ScreenController {
 			{ row: 1, col: 1 },
 			{ row: 2, col: 2 },
 		];
-		this.view.getGrid().blink(sequence);
+		this.view.getGrid().blink(sequence, () => {
+			this.model.startPlayerTurn(sequence);
+			this.view.updateStatus("Your turn! Repeat the sequence.");
+		});
 	}
 
 	/**
