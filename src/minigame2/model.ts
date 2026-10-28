@@ -5,10 +5,16 @@ const GRID_SIZE = 4
 let board: number[][] = clear();
 let score: number = 0;
 
+export type Direction = "left" | "right" | "up" | "down";
 
 
 function clear(): number[][] {
   return Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
+}
+
+// setup board to be expected
+export function setBoard(b: number[][]): void{
+  board = b;
 }
 
 export function reset(): void {
@@ -20,7 +26,7 @@ export function getState() {
   return { board, score };
 }
 
-// slide to left
+// update array after slide 
 export function slideLine(line: number[]): { line: number[]; gained: number } {
   let gained: number = 0;
   // remove all 0
@@ -36,4 +42,11 @@ export function slideLine(line: number[]): { line: number[]; gained: number } {
   while (line.length < GRID_SIZE) line.push(0);
 
   return { line, gained };
+}
+
+// 
+export function move(dir: Direction): boolean {
+  
+
+  return false;
 }
