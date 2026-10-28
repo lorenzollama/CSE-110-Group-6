@@ -43,7 +43,8 @@ function makePopupFrame(layer: Konva.Layer, boxW: number, boxH: number) {
   layer.add(root);
   new Konva.Tween({ node: root, opacity: 1, duration: 0.2 }).play();
 
-  const close = () => { root.destroy(); layer.batchDraw(); };
+  // reset cursor too: mouseleave never fires when a button is destroyed under the mouse
+  const close = () => { document.body.style.cursor = "default"; root.destroy(); layer.batchDraw(); };
   return { root, box, close };
 }
 
