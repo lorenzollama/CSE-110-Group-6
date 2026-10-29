@@ -2,6 +2,9 @@
   "name": "cse-110-group-6",
   "private": true,
   "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,6 +13,9 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "konva": "^10.9.0"
   },

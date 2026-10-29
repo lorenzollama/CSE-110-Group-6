@@ -1,4 +1,3 @@
-
 import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterScreen } from "./minigames/scrap-shooter/ScrapShooterScreen";
