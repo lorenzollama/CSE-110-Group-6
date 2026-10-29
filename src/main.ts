@@ -1,6 +1,6 @@
 import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types";
-import { ScrapShooterScreen } from "./minigames/scrap-shooter/ScrapShooterScreen";
+import { ScrapShooterScreen } from "./game/ScrapShooterScreen";
 
 class App implements ScreenSwitcher {
   private stage: Konva.Stage;

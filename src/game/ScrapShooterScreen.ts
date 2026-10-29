@@ -1,7 +1,7 @@
 
 import Konva from "konva";
 import { GameEngine } from "./engine/GameEngine";
-import type { View } from "../../types";
+import type { View } from "../types";
 import type { Group } from "konva/lib/Group";
 
 export class ScrapShooterScreen implements View {
