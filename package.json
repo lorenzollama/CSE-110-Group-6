@@ -4,13 +4,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "typecheck": "tsc"
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "konva": "^10.9.0"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
   }
 }
