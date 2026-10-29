@@ -1,12 +1,13 @@
 import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types";
-import { ScrapShooterScreen } from "./game/ScrapShooterScreen";
+import { ScrapShooterController } from "./game/ScrapShooterController";
 
 class App implements ScreenSwitcher {
   private stage: Konva.Stage;
   private screenLayer: Konva.Layer;
   private popupLayer: Konva.Layer;
-  private scrapShooter: ScrapShooterScreen;
+  private gameLayer: Konva.Layer;
+  private scrapShooter: ScrapShooterController;
 
   constructor(container: string) {
     this.stage = new Konva.Stage({
@@ -21,9 +22,11 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterScreen();
-    this.scrapShooter.getLayer().hide();
-    this.stage.add(this.scrapShooter.getLayer());
+    this.scrapShooter = new ScrapShooterController();
+    this.gameLayer = new Konva.Layer();
+    this.gameLayer.add(this.scrapShooter.getView().getGroup());
+    this.gameLayer.hide();
+    this.stage.add(this.gameLayer);
 
     this.screenLayer.add(
       new Konva.Text({
@@ -45,7 +48,7 @@ class App implements ScreenSwitcher {
 
   switchToScreen(screen: Screen): void {
     this.scrapShooter.hide();
-    this.scrapShooter.getLayer().hide();
+    this.gameLayer.hide();
     this.screenLayer.hide();
 
     switch (screen.type) {
@@ -54,7 +57,7 @@ class App implements ScreenSwitcher {
         break;
 
       case "game":
-        this.scrapShooter.getLayer().show();
+        this.gameLayer.show();
         this.scrapShooter.show();
         break;
 
