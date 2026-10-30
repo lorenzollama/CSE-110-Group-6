@@ -10,16 +10,13 @@ export interface View {
  * Screen types for navigation
  *
  * - "menu": Main menu screen
- * - "main game": the main game (Scrap Shooter)
- * - "minigame1", "minigame2": the two minigames (src/minigames/)
+ * - "game": Gameplay screen
  * - "result": Results screen with final score
  *   - score: Final score to display on results screen
  */
 export type Screen =
 	| { type: "menu" }
-	| { type: "main game" }
-	| { type: "minigame1" }
-	| { type: "minigame2" }
+	| { type: "game" }
 	| { type: "result"; score: number };
 
 export abstract class ScreenController {

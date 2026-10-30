@@ -1,8 +1,7 @@
 // YOUR test page. Not part of the real game.
 // Fakes what the main game will do so you can see your popups now.
 import Konva from "konva";
-import { PopupController } from "./PopupController";
-import { PopupView } from "./PopupView";
+import { showWrongAnswer, showLevelComplete } from "./popups";
 
 const stage = new Konva.Stage({ container: "app", width: 800, height: 600 });
 
@@ -16,10 +15,7 @@ stage.add(gameLayer);
 const popupLayer = new Konva.Layer();
 stage.add(popupLayer);
 
-// the view draws on the popup layer; the controller is what the game talks to
-const popups = new PopupController(new PopupView(popupLayer));
-
-popups.showWrongAnswer({
+showWrongAnswer(popupLayer, {
   //this can change pased on the gaming question which we will have to integrate based on user input
   question: "1/2 + 1/4",
   playerAnswer: "2/6",
@@ -29,7 +25,7 @@ popups.showWrongAnswer({
   // after "Got it", show the level-complete popup
   //this part has to be modifed to change so the player can finished the game
 
-  popups.showLevelComplete({ level: 1, score: 340, accuracy: 85 }, {
+  showLevelComplete(popupLayer, { level: 1, score: 340, accuracy: 85 }, {
     onNextLevel: () => console.log("next level"),
     onMenu: () => console.log("menu"),
   });
