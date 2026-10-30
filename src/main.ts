@@ -22,11 +22,12 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController();
+    this.scrapShooter = new ScrapShooterController(this.popupLayer);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
     this.gameLayer.hide();
     this.stage.add(this.gameLayer);
+    this.popupLayer.moveToTop(); // popups above the game
 
     this.screenLayer.add(
       new Konva.Text({

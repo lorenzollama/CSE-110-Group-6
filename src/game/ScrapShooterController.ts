@@ -1,3 +1,6 @@
+import type Konva from 'konva';
+import { getHighScore, submitHighScore } from '../api/highScore';
+import { type PopupHandle, showLevelComplete } from '../popups/popups';
 import { ScreenController } from '../types';
 import { ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
@@ -10,6 +13,11 @@ import { ScrapShooterView } from './ScrapShooterView';
 export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
   private model: ScrapShooterModel | null = null;
+  private popup: PopupHandle | null = null;
+
+  constructor(private popupLayer: Konva.Layer) {
+    super();
+  }
 
   getView(): ScrapShooterView {
     return this.view;
@@ -18,17 +26,26 @@ export class ScrapShooterController extends ScreenController {
   show(): void {
     if (this.model) return;
     this.view.show();
-    this.model = new ScrapShooterModel();
+    const model = new ScrapShooterModel();
+    this.model = model;
 
     this.view.build();
-    this.model.getScraps().forEach(scrap => this.view.addScrap(scrap));
-    this.view.highlightTarget(this.model.getScraps());
-    this.view.showTyped(this.model.getTyped());
+    model.getScraps().forEach(scrap => this.view.addScrap(scrap));
+    this.view.highlightTarget(model.getScraps());
+    this.view.showTyped(model.getTyped());
 
     window.addEventListener('keydown', this.onKeyDown);
+
+    getHighScore()
+      .then(highScore => {
+        if (this.model === model) this.view.showHighScore(highScore); // skip if the game was left meanwhile
+      })
+      .catch(err => console.warn('Could not load high score', err));
   }
 
   hide(): void {
+    this.popup?.close();
+    this.popup = null;
     window.removeEventListener('keydown', this.onKeyDown);
     this.view.destroy();
     this.model = null;
@@ -68,5 +85,32 @@ export class ScrapShooterController extends ScreenController {
     } else {
       this.view.flashWrong();
     }
+
+    if (model.isOver()) this.endGame(model);
+  }
+
+  private endGame(model: ScrapShooterModel): void {
+    window.removeEventListener('keydown', this.onKeyDown);
+
+    this.popup = showLevelComplete(
+      this.popupLayer,
+      { level: 1, score: model.getScore(), accuracy: model.getAccuracy() },
+      {
+        onNextLevel: () => this.restart(),
+        onMenu: () => this.restart(), // TODO: go to the menu once it exists
+      },
+    );
+
+    submitHighScore(model.getScore())
+      .then(({ highScore }) => {
+        if (this.model === model) this.view.showHighScore(highScore);
+      })
+      .catch(err => console.warn('Could not save high score', err));
+  }
+
+  private restart(): void {
+    this.popup = null; // the popup already closed itself before calling back
+    this.hide();
+    this.show();
   }
 }
