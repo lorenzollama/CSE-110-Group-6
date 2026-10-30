@@ -78,7 +78,7 @@ export class StartView implements View {
 		m1Text.offsetX(m1Text.width() / 2);
 		m1ButtonGroup.add(m1Button);
 		m1ButtonGroup.add(m1Text);
-		m1ButtonGroup.on("click", onStartClick);
+		// TODO: the minigame 1 team connects this button to their game
 		this.group.add(m1ButtonGroup);
 
     const m2ButtonGroup = new Konva.Group();
@@ -104,7 +104,7 @@ export class StartView implements View {
 		m2Text.offsetX(m2Text.width() / 2);
 		m2ButtonGroup.add(m2Button);
 		m2ButtonGroup.add(m2Text);
-		m2ButtonGroup.on("click", onStartClick);
+		// TODO: the minigame 2 team connects this button to their game
 		this.group.add(m2ButtonGroup);
 	}
 

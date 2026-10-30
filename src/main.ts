@@ -43,14 +43,12 @@ class App implements ScreenSwitcher {
     this.startController = new StartController(this);
     this.screenLayer.add(this.startController.getView().getGroup());
     this.centerScreens();
-  
-
     this.screenLayer.draw();
 
     window.addEventListener("resize", () => {
       this.stage.width(window.innerWidth);
       this.stage.height(window.innerHeight);
-       this.centerScreens();
+      this.centerScreens();
     });
   }
 
@@ -64,35 +62,40 @@ class App implements ScreenSwitcher {
         this.screenLayer.show();
         break;
 
-      case "minigame1":
+      case "main game":
         this.scrapShooter.getLayer().show();
         this.scrapShooter.show();
         break;
 
+      case "minigame1":
+        // TODO: the minigame 1 team shows their screen here
+        break;
+
       case "minigame2":
+        // TODO: the minigame 2 team shows their screen here
+        break;
+
+      case "result":
         this.screenLayer.show();
         break;
     }
 
     this.stage.batchDraw();
   }
-    /** Moves the screens to the middle of the window. */
-    private centerScreens(): void {
-      const offset = {
-        x: Math.max(0, (this.stage.width() - SCREEN_WIDTH) / 2),
-        y: Math.max(0, (this.stage.height() - SCREEN_HEIGHT) / 2),
-      };
-      this.screenLayer.position(offset);
-      this.scrapShooter.getLayer().position(offset);
-      this.stage.batchDraw();
-    }
 
+  /** Moves the screens to the middle of the window. */
+  private centerScreens(): void {
+    const offset = {
+      x: Math.max(0, (this.stage.width() - SCREEN_WIDTH) / 2),
+      y: Math.max(0, (this.stage.height() - SCREEN_HEIGHT) / 2),
+    };
+    this.screenLayer.position(offset);
+    this.scrapShooter.getLayer().position(offset);
+    this.stage.batchDraw();
+  }
 }
 
 const app = new App("container");
 
-// Temporary entry point for integration testing.
-// The game will start automatically until menu navigation is implemented.
+// Open on the start screen; its buttons switch to the games.
 app.switchToScreen({ type: "menu" });
-app.switchToScreen({ type: "minigame1" });
-app.switchToScreen({ type: "minigame2" });

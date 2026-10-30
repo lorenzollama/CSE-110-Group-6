@@ -20,7 +20,7 @@ export class StartController extends ScreenController {
   // TODO: create the StartModel and StartView, and tell the view what each button click should do
   //main game button
   private handleStartClick():void{
-    this.screenSwitcher.switchToScreen({type : "game"})
+    this.screenSwitcher.switchToScreen({type : "main game"})
   }
   //mini game 1 button
   //mini game 2 button
