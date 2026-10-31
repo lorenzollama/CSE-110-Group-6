@@ -93,7 +93,7 @@ class App implements ScreenSwitcher {
       y: Math.max(0, (this.stage.height() - SCREEN_HEIGHT) / 2),
     };
     this.screenLayer.position(offset);
-    this.scrapShooter.getLayer().position(offset);
+    this.gameLayer.position(offset);
     this.stage.batchDraw();
   }
 }
