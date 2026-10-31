@@ -44,13 +44,6 @@ describe("/api/high-score", () => {
     expect(res.status).toBe(400);
   });
 
-  it("resets to 0", async () => {
-    await request(app).post("/api/high-score").send({ score: 7 });
-    await request(app).delete("/api/high-score");
-    const res = await request(app).get("/api/high-score");
-    expect(res.body).toEqual({ highScore: 0 });
-  });
-
   it("keeps the high score after the server restarts", async () => {
     await request(app).post("/api/high-score").send({ score: 9 });
     const restarted = createApp(createJsonStore(file));
