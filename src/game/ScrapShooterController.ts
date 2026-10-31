@@ -1,7 +1,8 @@
 import type Konva from 'konva';
 import { getHighScore, submitHighScore } from '../api/highScore';
-import { type PopupHandle, showLevelComplete } from '../popups/popups';
-import { ScreenController } from '../types';
+import { PopupController } from '../popups/PopupController';
+import { PopupView } from '../popups/PopupView';
+import { ScreenController, type ScreenSwitcher } from '../types';
 import { ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 
@@ -13,10 +14,14 @@ import { ScrapShooterView } from './ScrapShooterView';
 export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
   private model: ScrapShooterModel | null = null;
-  private popup: PopupHandle | null = null;
+  private popups: PopupController;
 
-  constructor(private popupLayer: Konva.Layer) {
+  constructor(
+    private screenSwitcher: ScreenSwitcher,
+    popupLayer: Konva.Layer,
+  ) {
     super();
+    this.popups = new PopupController(new PopupView(popupLayer));
   }
 
   getView(): ScrapShooterView {
@@ -44,8 +49,7 @@ export class ScrapShooterController extends ScreenController {
   }
 
   hide(): void {
-    this.popup?.close();
-    this.popup = null;
+    this.popups.close();
     window.removeEventListener('keydown', this.onKeyDown);
     this.view.destroy();
     this.model = null;
@@ -55,7 +59,7 @@ export class ScrapShooterController extends ScreenController {
   // --------------------------------------------------------------- input
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (!this.model) return;
+    if (!this.model || this.popups.isOpen()) return; // typing pauses while a popup is open
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
     if (/^[0-9]$/.test(e.key)) {
@@ -84,6 +88,20 @@ export class ScrapShooterController extends ScreenController {
       this.view.highlightTarget(model.getScraps());
     } else {
       this.view.flashWrong();
+      const { question } = result.target;
+      this.popups.showWrongAnswer(
+        {
+          question: question.prompt,
+          playerAnswer: String(result.answer),
+          correctAnswer: String(question.answer),
+          explanation: question.explanation,
+        },
+        // If this was the last answer, show the level-complete popup after "Got it".
+        () => {
+          if (model.isOver()) this.endGame(model);
+        },
+      );
+      return;
     }
 
     if (model.isOver()) this.endGame(model);
@@ -92,12 +110,11 @@ export class ScrapShooterController extends ScreenController {
   private endGame(model: ScrapShooterModel): void {
     window.removeEventListener('keydown', this.onKeyDown);
 
-    this.popup = showLevelComplete(
-      this.popupLayer,
+    this.popups.showLevelComplete(
       { level: 1, score: model.getScore(), accuracy: model.getAccuracy() },
       {
         onNextLevel: () => this.restart(),
-        onMenu: () => this.restart(), // TODO: go to the menu once it exists
+        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
       },
     );
 
@@ -109,7 +126,6 @@ export class ScrapShooterController extends ScreenController {
   }
 
   private restart(): void {
-    this.popup = null; // the popup already closed itself before calling back
     this.hide();
     this.show();
   }

@@ -45,6 +45,16 @@ describe('ScrapShooterModel scoring', () => {
     expect(model.getAccuracy()).toBe(67);
   });
 
+  it('reports which scrap a wrong answer was for and what was typed', () => {
+    const model = new ScrapShooterModel();
+    const target = model.getScraps()[0];
+    expect(answer(model, target.question.answer + 1)).toEqual({
+      type: 'incorrect',
+      target,
+      answer: target.question.answer + 1,
+    });
+  });
+
   it('ignores answers after the game is over', () => {
     const model = new ScrapShooterModel();
     for (let i = 0; i < QUESTIONS_PER_GAME; i++) answerWrong(model);

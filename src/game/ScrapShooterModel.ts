@@ -13,7 +13,7 @@ export interface Scrap {
 
 export type SubmitResult =
   | { type: 'ignored' }
-  | { type: 'incorrect' }
+  | { type: 'incorrect'; target: Scrap; answer: number }
   | { type: 'correct'; hit: Scrap; spawned: Scrap };
 
 /**
@@ -74,7 +74,7 @@ export class ScrapShooterModel {
       const spawned = this.spawnScrap(target.slot); // the new scrap goes to the back of the line
       return { type: 'correct', hit: target, spawned };
     }
-    return { type: 'incorrect' };
+    return { type: 'incorrect', target, answer: value };
   }
 
   private spawnScrap(slot: number): Scrap {

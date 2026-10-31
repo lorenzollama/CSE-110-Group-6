@@ -27,7 +27,7 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController(this.popupLayer);
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
     this.gameLayer.hide();
