@@ -1,5 +1,6 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
+import type { Screen } from "../../types.ts";
 export const STAGE_WIDTH = 800;
 export const STAGE_HEIGHT = 600;
 /**
@@ -10,7 +11,7 @@ export const STAGE_HEIGHT = 600;
 export class StartView implements View {
   private group = new Konva.Group();
 
-  constructor(onStartClick: () => void) {
+  constructor(onStartClick: (screen: Screen) => void) {
     // TODO: add a background and a title to this.group
     this.group = new Konva.Group({visible:true})
 
@@ -52,7 +53,7 @@ export class StartView implements View {
 		startText.offsetX(startText.width() / 2);
 		mainButtonGroup.add(mainButton);
 		mainButtonGroup.add(startText);
-		mainButtonGroup.on("click", onStartClick);
+		mainButtonGroup.on("click", () => onStartClick({ type: "main game" }));
 		this.group.add(mainButtonGroup);
 
     const m1ButtonGroup = new Konva.Group();
@@ -79,6 +80,7 @@ export class StartView implements View {
 		m1ButtonGroup.add(m1Button);
 		m1ButtonGroup.add(m1Text);
 		// TODO: the minigame 1 team connects this button to their game
+		m1ButtonGroup.on("click", () => onStartClick({ type: "minigame1" }));
 		this.group.add(m1ButtonGroup);
 
     const m2ButtonGroup = new Konva.Group();
@@ -105,6 +107,7 @@ export class StartView implements View {
 		m2ButtonGroup.add(m2Button);
 		m2ButtonGroup.add(m2Text);
 		// TODO: the minigame 2 team connects this button to their game
+		m2ButtonGroup.on("click", () => onStartClick({ type: "minigame2" }));
 		this.group.add(m2ButtonGroup);
 	}
 

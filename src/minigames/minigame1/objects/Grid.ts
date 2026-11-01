@@ -1,0 +1,135 @@
+
+import Konva from "konva";
+import { Square } from "./Square";
+
+export interface GridOptions {
+	rows?: number;
+	cols?: number;
+	squareSize?: number;
+	gap?: number;
+	startX?: number;
+	startY?: number;
+	fill?: string;
+	onSquareClick?: (
+		square: Square,
+		row: number,
+		col: number
+	) => void;
+}
+
+export interface Coordinates {
+	row: number;
+	col: number;
+}
+
+export class Grid {
+	private squares: Square[][] = [];
+	private group: Konva.Group;
+	private rows: number;
+	private cols: number;
+
+	constructor(
+		parent: Konva.Container,
+		options: GridOptions = {}
+	) {
+		this.rows = options.rows ?? 3;
+		this.cols = options.cols ?? 3;
+		const squareSize = options.squareSize ?? 80;
+		const gap = options.gap ?? 10;
+
+		// create a dedicated group for the grid
+		this.group = new Konva.Group({
+			x: options.startX ?? 0,
+			y: options.startY ?? 0,
+		});
+
+		parent.add(this.group);
+
+		// create squares
+		for (let row = 0; row < this.rows; row++) {
+			this.squares[row] = [];
+
+			for (let col = 0; col < this.cols; col++) {
+				const square = new Square(this.group, {
+					x: col * (squareSize + gap),
+					y: row * (squareSize + gap),
+					size: squareSize,
+					fill: options.fill,
+					onClick: (clickedSquare) => {
+						options.onSquareClick?.(clickedSquare, row, col);
+					},
+				});
+
+				this.squares[row][col] = square;
+			}
+		}
+
+		this.group.getLayer()?.batchDraw();
+	}
+
+	// get group for styling purposes
+	getGroup(): Konva.Group {
+		return this.group;
+	}
+
+	// get square by row and col
+	getSquare(row: number, col: number): Square | undefined {
+		return this.squares[row]?.[col];
+	}
+
+	// get squares (2d array)
+	getSquares(): Square[][] {
+		return this.squares;
+	}
+
+	getRowCount(): number {
+		return this.rows;
+	}
+
+	getColCount(): number {
+		return this.cols;
+	}
+
+	/**
+	 * Plays the signals in order and notifies the caller when playback ends
+	 *
+	 * @param coordinates the ordered light sequence to display
+	 * @param onComplete the optional callback invoked after playback finishes
+	 */
+	blink(coordinates: Coordinates[], onComplete?: () => void): void {
+		let index = 0;
+
+		// recursive functions
+		const blinkNext = () => {
+			if (index >= coordinates.length) {
+				onComplete?.();
+				return;
+			}
+
+			const { row, col } = coordinates[index++];
+			const square = this.getSquare(row, col);
+
+			if (!square) {
+				blinkNext();
+				return;
+			}
+
+			square.blink(blinkNext);
+		};
+
+		blinkNext();
+	}
+
+	// remove grids and squares
+	destroy(): void {
+		for (const row of this.squares) {
+			for (const square of row) {
+				square.destroy();
+			}
+		}
+
+		this.squares = [];
+		this.group.destroy();
+		this.group.getLayer()?.batchDraw();
+	}
+}
