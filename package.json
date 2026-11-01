@@ -1,5 +1,7 @@
 {
   "name": "cse-110-group-6",
+  "private": true,
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -7,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "typecheck": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
   },
