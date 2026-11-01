@@ -16,7 +16,7 @@ export class Minigame1Controller implements ScreenSwitcher {
 	private resultsController: ResultsScreenController;
 
 	constructor(
-		private stage: Konva.Stage,
+		stage: Konva.Stage,
 		private layer: Konva.Layer,
 	) {
 		this.menuController = new MenuScreenController(this, stage);

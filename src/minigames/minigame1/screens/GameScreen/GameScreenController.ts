@@ -41,6 +41,7 @@ export class GameScreenController extends ScreenController {
 			}
 			else if (result === "complete") {
 				this.view.updateStatus("Sequence complete!");
+				this.endGame();
 			}
 		});
 	}
