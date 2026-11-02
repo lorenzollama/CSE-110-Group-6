@@ -38,7 +38,7 @@ class App implements ScreenSwitcher {
     // SampleGame is a stand-in until the real Game class (#81) is ready.
     this.minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
     this.gameLayer.add(this.minigame2.getView().getGroup());
-    this.minigame2.getView().hide();
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.stage.add(this.gameLayer);
     this.popupLayer.moveToTop(); // popups above the game
@@ -67,7 +67,7 @@ class App implements ScreenSwitcher {
 
   switchToScreen(screen: Screen): void {
     this.scrapShooter.hide();
-    this.minigame2.getView().hide();
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.screenLayer.hide();
 
@@ -87,7 +87,7 @@ class App implements ScreenSwitcher {
 
       case "minigame2":
         this.gameLayer.show();
-        this.minigame2.getView().show();
+        this.minigame2.show();
         this.minigame2.startNewGame();
         break;
 
