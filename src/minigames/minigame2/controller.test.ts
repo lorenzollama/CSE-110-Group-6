@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { keyToDirection, Minigame2Controller } from "../minigames/minigame2/controller.ts";
-import type { GameState } from "../minigames/minigame2/types.ts";
-import type { Minigame2View } from "../minigames/minigame2/view.ts";
+import { keyToDirection, Minigame2Controller } from "./controller.ts";
+import type { GameState } from "./types.ts";
+import type { Minigame2View } from "./view.ts";
 
 // Example data: the state the fake game returns after every move
 const STATE_AFTER_MOVE: GameState = {
