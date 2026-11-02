@@ -20,7 +20,7 @@ const STATE_AFTER_MOVE: GameState = {
 // so these tests need no browser, no Konva and no real game logic.
 function setup() {
   const game = { newGame: vi.fn(), move: vi.fn(() => STATE_AFTER_MOVE) };
-  const view = { draw: vi.fn() };
+  const view = { draw: vi.fn(), onNewGameClick: vi.fn() };
   const controller = new Minigame2Controller(game, view as unknown as Minigame2View);
   return { game, view, controller };
 }

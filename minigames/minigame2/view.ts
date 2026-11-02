@@ -40,6 +40,8 @@ export class Minigame2View implements View {
   private group: Konva.Group;
   private tiles: Konva.Group;
   private scoreText: Konva.Text;
+  private newGameButton: Konva.Group;
+  private gameOverPopup: Konva.Group;
 
   constructor() {
     this.group = new Konva.Group();
@@ -58,6 +60,10 @@ export class Minigame2View implements View {
       fill: TEXT_COLOR,
     });
     this.group.add(this.scoreText);
+
+    this.newGameButton = createNewGameButton();
+    this.gameOverPopup = createGameOverPopup(this.newGameButton);
+    this.group.add(this.gameOverPopup);
   }
 
   /**
@@ -66,7 +72,15 @@ export class Minigame2View implements View {
   draw(state: GameState): void {
     this.drawTiles(state.board);
     this.scoreText.text(`Score: ${state.score}`);
+    this.gameOverPopup.visible(state.status === "over");
     this.group.getLayer()?.batchDraw();
+  }
+
+  /**
+   * Runs the handler when the player clicks the New game button
+   */
+  onNewGameClick(handler: () => void): void {
+    this.newGameButton.on("click tap", handler);
   }
 
   // Draws the board background and the 16 empty cells (done once)
@@ -153,4 +167,53 @@ function cellPosition(row: number, col: number): { x: number; y: number } {
     x: BOARD_X + GAP + col * (TILE_SIZE + GAP),
     y: BOARD_Y + GAP + row * (TILE_SIZE + GAP),
   };
+}
+
+// A dark rounded button that says "New game"
+function createNewGameButton(): Konva.Group {
+  const width = 180;
+  const height = 56;
+  const button = new Konva.Group({
+    x: BOARD_X + (BOARD_SIZE - width) / 2,
+    y: BOARD_Y + 240,
+  });
+  button.add(new Konva.Rect({ width, height, fill: TEXT_COLOR, cornerRadius: 8 }));
+  button.add(new Konva.Text({
+    width,
+    height,
+    text: "New game",
+    fontSize: 24,
+    fontFamily: "Arial",
+    fill: "white",
+    align: "center",
+    verticalAlign: "middle",
+  }));
+  return button;
+}
+
+// Covers the board with "No moves left" and the New game button. It starts hidden.
+function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
+  const popup = new Konva.Group({ visible: false });
+  popup.add(new Konva.Rect({
+    x: BOARD_X,
+    y: BOARD_Y,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    fill: "white",
+    opacity: 0.8,
+    cornerRadius: 8,
+  }));
+  popup.add(new Konva.Text({
+    x: BOARD_X,
+    y: BOARD_Y + 150,
+    width: BOARD_SIZE,
+    text: "No moves left",
+    fontSize: 40,
+    fontStyle: "bold",
+    fontFamily: "Arial",
+    fill: TEXT_COLOR,
+    align: "center",
+  }));
+  popup.add(newGameButton);
+  return popup;
 }

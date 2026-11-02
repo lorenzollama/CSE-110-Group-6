@@ -44,6 +44,7 @@ export class Minigame2Controller extends ScreenController {
     super();
     this.game = game;
     this.view = view;
+    this.view.onNewGameClick(() => this.startNewGame());
   }
 
   /**
