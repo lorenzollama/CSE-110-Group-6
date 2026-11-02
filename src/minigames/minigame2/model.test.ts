@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { boardsEqual, Game, reverseRows, slideLine, transpose } from "./model.ts";
+import { boardsEqual, canMerge, Game, reverseRows, slideLine, transpose } from "./model.ts";
 import type { Board, Direction } from "./types.ts";
 
 const cases: Array<[number[], number[], number]> = [
@@ -260,5 +260,87 @@ describe("boardsEqual", () => {
     changed[0] = [0, 0, 2, 4];
 
     expect(boardsEqual(sampleBoard(), changed)).toBe(false);
+  });
+});
+
+describe("canMerge", () => {
+  it("merges two tiles with the same value", () => {
+    expect(canMerge(2, 2)).toBe(true);
+    expect(canMerge(1024, 1024)).toBe(true);
+  });
+
+  it("does not merge tiles with different values", () => {
+    expect(canMerge(2, 4)).toBe(false);
+    expect(canMerge(2, 0)).toBe(false);
+  });
+
+  it("does not merge two empty cells", () => {
+    expect(canMerge(0, 0)).toBe(false);
+  });
+});
+
+describe("Game status", () => {
+  it("is over when the board is full and no neighbors can merge", () => {
+    const stuck: Board = [
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+    ];
+
+    const state = gameWithBoard(stuck).move("left");
+
+    expect(state.board).toEqual(stuck);
+    expect(state.status).toBe("over");
+  });
+
+  it("is over after the new tile fills the last empty cell with no merges left", () => {
+    // sliding right opens (3, 0), and the new 4 there matches none of its neighbors
+    const game = gameWithBoard(
+      [
+        [2, 4, 2, 4],
+        [4, 2, 4, 2],
+        [2, 4, 2, 4],
+        [2, 4, 2, 0],
+      ],
+      fakeRandom(0, 0.05),
+    );
+
+    const state = game.move("right");
+
+    expect(state.board[3]).toEqual([4, 2, 4, 2]);
+    expect(state.status).toBe("over");
+  });
+
+  it("keeps playing when the board is full but two tiles in a column can merge", () => {
+    // the two 8s in the first column can merge up or down
+    const board: Board = [
+      [8, 4, 2, 4],
+      [8, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+    ];
+
+    // left changes nothing, but the game is not over
+    const state = gameWithBoard(board).move("left");
+
+    expect(state.board).toEqual(board);
+    expect(state.status).toBe("playing");
+  });
+
+  it("keeps playing when the only merge is in the last row", () => {
+    // the two 8s are at the bottom right, the last pair hasMoves checks
+    const board: Board = [
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 8, 8],
+    ];
+
+    // up changes nothing, but the game is not over
+    const state = gameWithBoard(board).move("up");
+
+    expect(state.board).toEqual(board);
+    expect(state.status).toBe("playing");
   });
 });

@@ -1,4 +1,4 @@
-import type { Board, Direction, GameLogic, GameState, GameStatus } from "./types.ts"
+import type { Board, Direction, GameLogic, GameState, } from "./types.ts"
 
 // set up constant grid size to be 4x4
 const GRID_SIZE = 4
@@ -15,7 +15,6 @@ const FOUR_TILE_CHANCE = 0.1;
 export class Game implements GameLogic {
   private board: Board = clear();
   private score: number = 0;
-  private status: GameStatus = "playing";
   private random: () => number;
 
   constructor(random: () => number = Math.random) {
@@ -29,7 +28,11 @@ export class Game implements GameLogic {
 
   // get current state
   private getState(): GameState {
-    return { board:this.board, score:this.score, status:this.status};
+    return {
+      board: this.board,
+      score: this.score,
+      status: hasMoves(this.board) ? "playing" : "over",
+    };
   }
 
   // add random tile after a successful move
@@ -56,7 +59,6 @@ export class Game implements GameLogic {
   newGame(): GameState {
     this.board = clear();
     this.score = 0;
-    this.status = "playing";
     this.addRandomTile();
     this.addRandomTile();
     return this.getState();
@@ -92,12 +94,30 @@ export class Game implements GameLogic {
   
     return this.getState();
   }
+  
+}
+
+// the player can still move if there is an empty cell or two neighbors can merge
+function hasMoves(board: Board): boolean{
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      if (board[row][col] === 0) {
+        return true;
+      }
+      if (col < GRID_SIZE - 1 && canMerge(board[row][col], board[row][col + 1])) {
+        return true;
+      }
+      if (row < GRID_SIZE - 1 && canMerge(board[row][col], board[row + 1][col])) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function clear(): number[][] {
   return Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
 }
-
 
 // update array after slide 
 export function slideLine(line: number[]): { line: number[]; gained: number } {
@@ -106,7 +126,7 @@ export function slideLine(line: number[]): { line: number[]; gained: number } {
   line = line.filter(x => x !== 0);
   // update after-slide array
   for (let i: number = 0; i < line.length-1; i++){
-    if (line[i] === line[i + 1]) {
+    if (canMerge(line[i], line[i + 1])) {
       line[i] *= 2;
       gained += line[i];
       line.splice(i + 1, 1);
@@ -129,4 +149,9 @@ export function transpose(board: Board): Board{
 
 export function boardsEqual(a: Board, b: Board): boolean{
   return a.every((row, i) => row.every((cell, j) => cell === b[i][j]));
+}
+
+// two tiles can merge when they have the same value; empty cells (0) never merge
+export function canMerge(a: number, b: number): boolean{
+  return a !== 0 && a === b;  
 }
