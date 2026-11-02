@@ -1,5 +1,6 @@
 import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types.ts";
+import { Minigame2View } from "../minigames/minigame2/view.ts";
 
 /**
  * Main Application - Coordinates all screens
@@ -28,13 +29,9 @@ class App implements ScreenSwitcher {
 		this.stage.add(this.popupLayer);
 
 		// TODO: create screen controllers and add their groups to screenLayer
-		this.screenLayer.add(new Konva.Text({
-			x: 20,
-			y: 20,
-			text: "CSE 110 Group 6 - shared skeleton",
-			fontSize: 24,
-			fontFamily: "Arial",
-		}));
+		// For now this branch only shows Minigame 2.
+		const minigame2View = new Minigame2View();
+		this.screenLayer.add(minigame2View.getGroup());
 		this.screenLayer.draw();
 
 		window.addEventListener("resize", () => {
