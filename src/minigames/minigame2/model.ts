@@ -1,30 +1,43 @@
+import type { Board, Direction, GameLogic, GameState, GameStatus } from "./types.ts"
 
 // set up constant grid size to be 4x4
 const GRID_SIZE = 4
 
-let board: number[][] = clear();
-let score: number = 0;
+export class Game implements GameLogic {
+  private board: number[][] = clear();
+  private score: number = 0;
+  private status: GameStatus = "playing";
 
-export type Direction = "left" | "right" | "up" | "down";
+  // setup board to be expected
+  setBoard(b: number[][]): void{
+    this.board = b;
+  }
 
+  // get current state
+  getState() {
+    return { board:this.board, score:this.score, status:this.status};
+  }
+  
+  // start new game
+  newGame(): GameState {
+    this.board = clear();
+    this.score = 0;
+    this.status = "playing";
+    return this.getState();
+  }
+  
+  // 
+  move(dir: Direction): GameState {
+    
+  
+    return this.getState();
+  }
+}
 
 function clear(): number[][] {
   return Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
 }
 
-// setup board to be expected
-export function setBoard(b: number[][]): void{
-  board = b;
-}
-
-export function reset(): void {
-  board = clear();
-  score = 0;
-}
-
-export function getState() {
-  return { board, score };
-}
 
 // update array after slide 
 export function slideLine(line: number[]): { line: number[]; gained: number } {
@@ -44,9 +57,12 @@ export function slideLine(line: number[]): { line: number[]; gained: number } {
   return { line, gained };
 }
 
-// 
-export function move(dir: Direction): boolean {
-  
+// reverse array
+export function reverseRows(board: Board): Board{
+  return board.map(row => [...row].reverse());
+}
 
-  return false;
+// transpose array
+export function transpose(board: Board): Board{
+  return board[0].map((_, col) => board.map(row => row[col]));
 }
