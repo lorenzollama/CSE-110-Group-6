@@ -3,7 +3,7 @@ import type { View } from "../../src/types.ts";
 import { STAGE_WIDTH } from "./constants.ts";
 import type { Board, GameState } from "./types.ts";
 
-// Board layout
+// Board layout, in pixels
 const GRID_SIZE = 4;
 const TILE_SIZE = 100;
 const GAP = 10;
@@ -15,7 +15,7 @@ const BOARD_COLOR = "#8d99ae";
 const EMPTY_CELL_COLOR = "#cdd3db";
 const TEXT_COLOR = "#2b2d42";
 
-// Tile value color
+// Each tile value gets its own color
 const TILE_COLORS: Record<number, string> = {
   2: "#c8e6c9",
   4: "#a5d6a7",
@@ -34,11 +34,12 @@ const BIG_TILE_COLOR = "#ffca28"; // for any tile bigger than 2048
 /**
  * Minigame2View - draws Minigame 2 with Konva
  *
- * The view draws what it is given from the controller.
+ * The view only draws what it is given. The controller decides what to draw.
  */
 export class Minigame2View implements View {
   private group: Konva.Group;
   private tiles: Konva.Group;
+  private scoreText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -47,6 +48,16 @@ export class Minigame2View implements View {
     // tiles get their own group so they can be cleared and redrawn after every move
     this.tiles = new Konva.Group();
     this.group.add(this.tiles);
+
+    this.scoreText = new Konva.Text({
+      x: BOARD_X,
+      y: 40,
+      text: "Score: 0",
+      fontSize: 32,
+      fontFamily: "Arial",
+      fill: TEXT_COLOR,
+    });
+    this.group.add(this.scoreText);
   }
 
   /**
@@ -54,10 +65,11 @@ export class Minigame2View implements View {
    */
   draw(state: GameState): void {
     this.drawTiles(state.board);
+    this.scoreText.text(`Score: ${state.score}`);
     this.group.getLayer()?.batchDraw();
   }
 
-  // Draws the board background and the 16 empty cells 
+  // Draws the board background and the 16 empty cells (done once)
   private drawEmptyGrid(): void {
     this.group.add(new Konva.Rect({
       x: BOARD_X,
@@ -83,7 +95,7 @@ export class Minigame2View implements View {
     }
   }
 
-  // Removes the old tiles, then draws each non empty cell as a colored tile with its number
+  // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
   private drawTiles(board: Board): void {
     this.tiles.destroyChildren();
 
@@ -91,7 +103,7 @@ export class Minigame2View implements View {
       for (let col = 0; col < GRID_SIZE; col++) {
         const value = board[row][col];
         if (value === 0) {
-          continue; // 0 means empty so there is no tile to draw
+          continue; // 0 means empty, so there is no tile to draw
         }
 
         const { x, y } = cellPosition(row, col);
@@ -135,7 +147,7 @@ export class Minigame2View implements View {
   }
 }
 
-// Top left corner of the cell at (row, col)
+// Top-left corner of the cell at (row, col)
 function cellPosition(row: number, col: number): { x: number; y: number } {
   return {
     x: BOARD_X + GAP + col * (TILE_SIZE + GAP),
