@@ -64,6 +64,14 @@ export class Minigame2Controller extends ScreenController {
       return; // not a game key, so let the browser handle it as usual
     }
 
+    // stop the arrow keys from scrolling the page
+    event.preventDefault();
+
+    // holding a key down makes the browser repeat it, so count only the first press
+    if (event.repeat) {
+      return;
+    }
+
     this.view.draw(this.game.move(direction));
   }
 

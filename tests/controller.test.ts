@@ -26,9 +26,10 @@ function setup() {
 }
 
 // Sends the controller a pretend keydown event with only the parts it reads
-function pressKey(controller: Minigame2Controller, key: string) {
-  const event = { key };
+function pressKey(controller: Minigame2Controller, key: string, repeat = false) {
+  const event = { key, repeat, preventDefault: vi.fn() };
   controller.handleKeyDown(event as unknown as KeyboardEvent);
+  return event;
 }
 
 describe("keyToDirection", () => {
@@ -69,12 +70,40 @@ describe("Minigame2Controller.handleKeyDown", () => {
     expect(view.draw).toHaveBeenCalledWith(STATE_AFTER_MOVE);
   });
 
+  it("stops the arrow keys from scrolling the page", () => {
+    const { controller } = setup();
+
+    const event = pressKey(controller, "ArrowDown");
+
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+
   it("ignores keys that are not game keys", () => {
     const { game, view, controller } = setup();
 
-    pressKey(controller, "q");
+    const event = pressKey(controller, "q");
 
     expect(game.move).not.toHaveBeenCalled();
     expect(view.draw).not.toHaveBeenCalled();
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("counts a held key only once", () => {
+    const { game, view, controller } = setup();
+
+    pressKey(controller, "d");
+    pressKey(controller, "d", true); // the browser repeats a key while it is held down
+    pressKey(controller, "d", true);
+
+    expect(game.move).toHaveBeenCalledTimes(1);
+    expect(view.draw).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a held arrow key from scrolling the page", () => {
+    const { controller } = setup();
+
+    const event = pressKey(controller, "ArrowUp", true);
+
+    expect(event.preventDefault).toHaveBeenCalled();
   });
 });
