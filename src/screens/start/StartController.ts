@@ -15,7 +15,7 @@ export class StartController extends ScreenController {
   constructor(screenSwitcher: ScreenSwitcher){
     super();
     this.screenSwitcher = screenSwitcher;
-    this.view = new StartView(() => this.handleStartClick());
+    this.view = new StartView(() => this.handleStartClick(), () => this.handleMinigame2Click());
   }
   // TODO: create the StartModel and StartView, and tell the view what each button click should do
   //main game button
@@ -24,6 +24,9 @@ export class StartController extends ScreenController {
   }
   //mini game 1 button
   //mini game 2 button
+  private handleMinigame2Click(): void {
+    this.screenSwitcher.switchToScreen({ type: "minigame2" });
+  }
   getView(): StartView {
     return this.view;
   }

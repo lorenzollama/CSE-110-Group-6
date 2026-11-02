@@ -10,7 +10,7 @@ export const STAGE_HEIGHT = 600;
 export class StartView implements View {
   private group = new Konva.Group();
 
-  constructor(onStartClick: () => void) {
+  constructor(onStartClick: () => void, onMinigame2Click: () => void) {
     // TODO: add a background and a title to this.group
     this.group = new Konva.Group({visible:true})
 
@@ -104,7 +104,7 @@ export class StartView implements View {
 		m2Text.offsetX(m2Text.width() / 2);
 		m2ButtonGroup.add(m2Button);
 		m2ButtonGroup.add(m2Text);
-		// TODO: the minigame 2 team connects this button to their game
+		m2ButtonGroup.on("click", onMinigame2Click);
 		this.group.add(m2ButtonGroup);
 	}
 
