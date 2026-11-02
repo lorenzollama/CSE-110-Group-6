@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Game, reverseRows, slideLine, transpose } from "./model.ts";
+import { boardsEqual, Game, reverseRows, slideLine, transpose } from "./model.ts";
 import type { Board, Direction } from "./types.ts";
 
 const cases: Array<[number[], number[], number]> = [
@@ -151,5 +151,42 @@ describe("Game.move", () => {
 
     expect(state.board).toEqual(board);
     expect(state.score).toBe(0);
+  });
+});
+
+describe("boardsEqual", () => {
+  // returns a new copy each time, so the two boards being compared are different arrays
+  function sampleBoard(): Board {
+    return [
+      [2, 4, 0, 0],
+      [0, 8, 0, 0],
+      [0, 0, 16, 0],
+      [0, 0, 0, 32],
+    ];
+  }
+
+  it("is true for two separate boards with the same tiles", () => {
+    expect(boardsEqual(sampleBoard(), sampleBoard())).toBe(true);
+  });
+
+  it("is false when one tile is different", () => {
+    const changed = sampleBoard();
+    changed[1][1] = 4;
+
+    expect(boardsEqual(sampleBoard(), changed)).toBe(false);
+  });
+
+  it("is false when only the last cell is different", () => {
+    const changed = sampleBoard();
+    changed[3][3] = 0;
+
+    expect(boardsEqual(sampleBoard(), changed)).toBe(false);
+  });
+
+  it("does not ignore a tile that moved to an empty cell", () => {
+    const changed = sampleBoard();
+    changed[0] = [0, 0, 2, 4];
+
+    expect(boardsEqual(sampleBoard(), changed)).toBe(false);
   });
 });

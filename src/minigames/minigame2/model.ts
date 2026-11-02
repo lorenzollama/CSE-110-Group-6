@@ -11,18 +11,23 @@ const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
 }
 
 export class Game implements GameLogic {
-  private board: number[][] = clear();
+  private board: Board = clear();
   private score: number = 0;
   private status: GameStatus = "playing";
 
   // setup board to be expected
-  setBoard(b: number[][]): void{
+  setBoard(b: Board): void{
     this.board = b;
   }
 
   // get current state
-  getState() {
+  private getState(): GameState {
     return { board:this.board, score:this.score, status:this.status};
+  }
+
+  // add random tile after a successful move
+  private addRandomTile(): void{
+    
   }
   
   // start new game
@@ -33,7 +38,7 @@ export class Game implements GameLogic {
     return this.getState();
   }
   
-  // 
+  // update board after move
   move(dir: Direction): GameState {
     let board = this.board;
 
@@ -56,7 +61,10 @@ export class Game implements GameLogic {
       board = transform(board);
     }
 
-    this.board = board;
+    if (!boardsEqual(this.board, board)) {
+      this.board = board;
+      this.addRandomTile();
+    }
   
     return this.getState();
   }
@@ -93,4 +101,8 @@ export function reverseRows(board: Board): Board{
 // transpose array
 export function transpose(board: Board): Board{
   return board[0].map((_, col) => board.map(row => row[col]));
+}
+
+export function boardsEqual(a: Board, b: Board): boolean{
+  return a.every((row, i) => row.every((cell, j) => cell === b[i][j]));
 }
