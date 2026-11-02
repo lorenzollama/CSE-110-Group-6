@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { boardsEqual, Game, reverseRows, slideLine, transpose } from "./model.ts";
 import type { Board, Direction } from "./types.ts";
 
@@ -84,6 +84,64 @@ describe("reverse rows", () => {
   });
 });
 
+/**
+ * A fake Math.random that returns `values` in order, then starts over.
+ *
+ * Each new tile uses two numbers: the first picks the empty cell (0 = the first
+ * empty cell in reading order, 0.99 = the last) and the second picks the value
+ * (below 0.1 = a 4, otherwise a 2).
+ */
+function fakeRandom(...values: number[]): () => number {
+  let next = 0;
+  return () => values[next++ % values.length];
+}
+
+// by default new tiles go in the first empty cell and are always a 2
+function gameWithBoard(board: Board, random = fakeRandom(0, 0.5)): Game {
+  const game = new Game(random);
+  game.setBoard(board);
+  return game;
+}
+
+describe("Game.newGame", () => {
+  it("starts with two tiles, a score of 0, and status playing", () => {
+    const state = new Game(fakeRandom(0, 0.5)).newGame();
+
+    expect(state).toEqual({
+      board: [
+        [2, 2, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      score: 0,
+      status: "playing",
+    });
+  });
+
+  it("puts the starting tiles where the random numbers point", () => {
+    // 0.99 picks the last empty cell each time
+    const state = new Game(fakeRandom(0.99, 0.5)).newGame();
+
+    expect(state.board[3]).toEqual([0, 0, 2, 2]);
+  });
+
+  it("clears the board and score from the last game", () => {
+    const game = gameWithBoard([
+      [2, 2, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 16],
+    ]);
+    expect(game.move("left").score).toBe(4);
+
+    const state = game.newGame();
+
+    expect(state.score).toBe(0);
+    expect(state.board.flat().filter(tile => tile !== 0)).toHaveLength(2);
+  });
+});
+
 describe("Game.move", () => {
   // returns a new copy each time, so one test can't change another test's board
   function startBoard(): Board {
@@ -95,18 +153,13 @@ describe("Game.move", () => {
     ];
   }
 
-  function gameWithBoard(board: Board): Game {
-    const game = new Game();
-    game.setBoard(board);
-    return game;
-  }
-
-  // the same start board moved each way: one pair of 2s merges, so every move scores 4
+  // the same start board moved each way: one pair of 2s merges, so every move scores 4.
+  // each result also has a new 2 in the first empty cell (reading order)
   const directionCases: Array<[Direction, Board]> = [
-    ["left", [[4, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0]]],
-    ["right", [[0, 0, 4, 4], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 2]]],
-    ["up", [[4, 2, 4, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]],
-    ["down", [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [4, 2, 4, 0]]],
+    ["left", [[4, 4, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0]]],
+    ["right", [[2, 0, 4, 4], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 2]]],
+    ["up", [[4, 2, 4, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]],
+    ["down", [[2, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [4, 2, 4, 0]]],
   ];
 
   for (const [direction, expected] of directionCases) {
@@ -147,10 +200,29 @@ describe("Game.move", () => {
       [0, 0, 0, 0],
     ];
 
-    const state = gameWithBoard(board).move("left");
+    const random = vi.fn(Math.random);
+
+    const state = gameWithBoard(board, random).move("left");
 
     expect(state.board).toEqual(board);
     expect(state.score).toBe(0);
+    expect(random).not.toHaveBeenCalled(); // no new tile was added
+  });
+
+  it("puts the new tile in the empty cell the random number points to", () => {
+    // 0.99 picks the last empty cell, which is (3, 3) after sliding left
+    const state = gameWithBoard(startBoard(), fakeRandom(0.99, 0.5)).move("left");
+
+    expect(state.board[3]).toEqual([2, 0, 0, 2]);
+  });
+
+  it("makes the new tile a 4 only when the random number is below the 4-tile chance", () => {
+    const four = gameWithBoard(startBoard(), fakeRandom(0, 0.05)).move("left");
+    expect(four.board[0]).toEqual([4, 4, 4, 0]);
+
+    // 0.1 is exactly the chance, so it is not below it and makes a 2
+    const two = gameWithBoard(startBoard(), fakeRandom(0, 0.1)).move("left");
+    expect(two.board[0]).toEqual([4, 4, 2, 0]);
   });
 });
 

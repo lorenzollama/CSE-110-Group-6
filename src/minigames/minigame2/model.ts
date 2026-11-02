@@ -9,11 +9,18 @@ const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
   up: [transpose],
   down: [transpose, reverseRows],
 }
+// chance that a new tile is a 4 instead of a 2
+const FOUR_TILE_CHANCE = 0.1;
 
 export class Game implements GameLogic {
   private board: Board = clear();
   private score: number = 0;
   private status: GameStatus = "playing";
+  private random: () => number;
+
+  constructor(random: () => number = Math.random) {
+    this.random = random;
+  }
 
   // setup board to be expected
   setBoard(b: Board): void{
@@ -27,7 +34,22 @@ export class Game implements GameLogic {
 
   // add random tile after a successful move
   private addRandomTile(): void{
-    
+    const emptyCells: Array<[number, number]> = [];
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE; col++) {
+        if (this.board[row][col] === 0) {
+          emptyCells.push([row, col]);
+        }
+      }
+    }
+
+    if (emptyCells.length === 0) {
+      return;
+    }
+
+    // choose a random spot and put 2 or 4 in it
+    const [row, col] = emptyCells[Math.floor(this.random() * emptyCells.length)];
+    this.board[row][col] = this.random() < FOUR_TILE_CHANCE ? 4 : 2;
   }
   
   // start new game
@@ -35,6 +57,8 @@ export class Game implements GameLogic {
     this.board = clear();
     this.score = 0;
     this.status = "playing";
+    this.addRandomTile();
+    this.addRandomTile();
     return this.getState();
   }
   
