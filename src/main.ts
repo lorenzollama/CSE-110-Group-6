@@ -1,5 +1,7 @@
 import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types.ts";
+import { Minigame2Controller } from "../minigames/minigame2/controller.ts";
+import { SampleGame } from "../minigames/minigame2/sampleGame.ts";
 import { Minigame2View } from "../minigames/minigame2/view.ts";
 
 /**
@@ -30,8 +32,10 @@ class App implements ScreenSwitcher {
 
 		// TODO: create screen controllers and add their groups to screenLayer
 		// For now this branch only shows Minigame 2.
-		const minigame2View = new Minigame2View();
-		this.screenLayer.add(minigame2View.getGroup());
+		// SampleGame is a stand-in until the real Game class (#81) is ready.
+		const minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
+		this.screenLayer.add(minigame2.getView().getGroup());
+		minigame2.startNewGame();
 		this.screenLayer.draw();
 
 		window.addEventListener("resize", () => {
