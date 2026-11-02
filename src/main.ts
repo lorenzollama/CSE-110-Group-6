@@ -36,6 +36,7 @@ class App implements ScreenSwitcher {
 		const minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
 		this.screenLayer.add(minigame2.getView().getGroup());
 		minigame2.startNewGame();
+		window.addEventListener("keydown", (event) => minigame2.handleKeyDown(event));
 		this.screenLayer.draw();
 
 		window.addEventListener("resize", () => {
