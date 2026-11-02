@@ -3,7 +3,7 @@ import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { StartController } from "./screens/start/StartController";
 import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
-import { SampleGame } from "./minigames/minigame2/sampleGame.ts";
+import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
 
 const SCREEN_WIDTH = 800;
@@ -35,8 +35,7 @@ class App implements ScreenSwitcher {
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
 
-    // SampleGame is a stand-in until the real Game class (#81) is ready.
-    this.minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
+    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View());
     this.gameLayer.add(this.minigame2.getView().getGroup());
     this.minigame2.hide();
     this.gameLayer.hide();
