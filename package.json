@@ -1,5 +1,6 @@
 {
   "name": "cse-110-group-6",
+  "private": true,
   "type": "module",
   "version": "1.0.0",
   "description": "",
@@ -8,17 +9,24 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc",
-    "test": "vitest run --passWithNoTests",
+    "server": "tsx watch server/index.ts",
+    "typecheck": "tsc && tsc -p server",
+    "test": "vitest run",
     "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "express": "^5.3.0",
     "konva": "^10.9.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

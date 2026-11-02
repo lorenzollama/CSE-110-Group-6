@@ -1,64 +1,117 @@
 import Konva from "konva";
-import type { ScreenSwitcher, Screen } from "./types.ts";
-import { Minigame2Controller } from "../minigames/minigame2/controller.ts";
-import { SampleGame } from "../minigames/minigame2/sampleGame.ts";
-import { Minigame2View } from "../minigames/minigame2/view.ts";
+import type { ScreenSwitcher, Screen } from "./types";
+import { ScrapShooterController } from "./game/ScrapShooterController";
+import { StartController } from "./screens/start/StartController";
+import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
+import { SampleGame } from "./minigames/minigame2/sampleGame.ts";
+import { Minigame2View } from "./minigames/minigame2/view.ts";
 
-/**
- * Main Application - Coordinates all screens
- *
- * Shared skeleton: screens and minigames register their controllers here.
- * Each screen has its own Konva.Group on the screen layer, and only one is
- * visible at a time. Popups go on the popup layer so they draw on top.
- */
+const SCREEN_WIDTH = 800;
+const SCREEN_HEIGHT = 600;
+
 class App implements ScreenSwitcher {
-	private stage: Konva.Stage;
-	private screenLayer: Konva.Layer;
-	private popupLayer: Konva.Layer;
+  private stage: Konva.Stage;
+  private screenLayer: Konva.Layer;
+  private popupLayer: Konva.Layer;
+  private gameLayer: Konva.Layer;
+  private scrapShooter: ScrapShooterController;
+  private minigame2: Minigame2Controller;
+  private startController: StartController;
 
-	constructor(container: string) {
-		// initialize Konva stage (the main canvas)
-		this.stage = new Konva.Stage({
-			container,
-			width: window.innerWidth,
-			height: window.innerHeight,
-		});
+  constructor(container: string) {
+    this.stage = new Konva.Stage({
+      container,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
 
-		// screens go on the bottom layer, popups on the top layer
-		this.screenLayer = new Konva.Layer();
-		this.popupLayer = new Konva.Layer();
-		this.stage.add(this.screenLayer);
-		this.stage.add(this.popupLayer);
+    this.screenLayer = new Konva.Layer();
+    this.popupLayer = new Konva.Layer();
 
-		// TODO: create screen controllers and add their groups to screenLayer
-		// For now this branch only shows Minigame 2.
-		// SampleGame is a stand-in until the real Game class (#81) is ready.
-		const minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
-		this.screenLayer.add(minigame2.getView().getGroup());
-		minigame2.startNewGame();
-		window.addEventListener("keydown", (event) => minigame2.handleKeyDown(event));
-		this.screenLayer.draw();
+    this.stage.add(this.screenLayer);
+    this.stage.add(this.popupLayer);
 
-		window.addEventListener("resize", () => {
-			this.stage.width(window.innerWidth);
-			this.stage.height(window.innerHeight);
-		});
-	}
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer);
+    this.gameLayer = new Konva.Layer();
+    this.gameLayer.add(this.scrapShooter.getView().getGroup());
 
-	/**
-	 * Switch to a different screen
-	 * Hides every screen, then shows only the requested one
-	 */
-	switchToScreen(screen: Screen): void {
-		// TODO: hide all screen controllers, then show the requested one
-		switch (screen.type) {
-			case "menu":
-			case "game":
-			case "result":
-				break;
-		}
-	}
+    // SampleGame is a stand-in until the real Game class (#81) is ready.
+    this.minigame2 = new Minigame2Controller(new SampleGame(), new Minigame2View());
+    this.gameLayer.add(this.minigame2.getView().getGroup());
+    this.minigame2.hide();
+    this.gameLayer.hide();
+    this.stage.add(this.gameLayer);
+    this.popupLayer.moveToTop(); // popups above the game
+
+    this.screenLayer.add(
+      new Konva.Text({
+        x: 20,
+        y: 20,
+        text: "CSE 110 Group 6 - shared skeleton",
+        fontSize: 24,
+        fontFamily: "Arial",
+      }),
+    );
+
+    this.startController = new StartController(this);
+    this.screenLayer.add(this.startController.getView().getGroup());
+    this.centerScreens();
+    this.screenLayer.draw();
+
+    window.addEventListener("resize", () => {
+      this.stage.width(window.innerWidth);
+      this.stage.height(window.innerHeight);
+      this.centerScreens();
+    });
+  }
+
+  switchToScreen(screen: Screen): void {
+    this.scrapShooter.hide();
+    this.minigame2.hide();
+    this.gameLayer.hide();
+    this.screenLayer.hide();
+
+    switch (screen.type) {
+      case "menu":
+        this.screenLayer.show();
+        break;
+
+      case "main game":
+        this.gameLayer.show();
+        this.scrapShooter.show();
+        break;
+
+      case "minigame1":
+        // TODO: the minigame 1 team shows their screen here
+        break;
+
+      case "minigame2":
+        this.gameLayer.show();
+        this.minigame2.show();
+        this.minigame2.startNewGame();
+        break;
+
+      case "result":
+        this.screenLayer.show();
+        break;
+    }
+
+    this.stage.batchDraw();
+  }
+
+  /** Moves the screens to the middle of the window. */
+  private centerScreens(): void {
+    const offset = {
+      x: Math.max(0, (this.stage.width() - SCREEN_WIDTH) / 2),
+      y: Math.max(0, (this.stage.height() - SCREEN_HEIGHT) / 2),
+    };
+    this.screenLayer.position(offset);
+    this.gameLayer.position(offset);
+    this.stage.batchDraw();
+  }
 }
 
-// Initialize the application
-new App("container");
+const app = new App("container");
+
+// Open on the start screen; its buttons switch to the games.
+app.switchToScreen({ type: "menu" });

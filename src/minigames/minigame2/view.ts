@@ -1,5 +1,5 @@
 import Konva from "konva";
-import type { View } from "../../src/types.ts";
+import type { View } from "../../types.ts";
 import { STAGE_WIDTH } from "./constants.ts";
 import type { Board, GameState } from "./types.ts";
 

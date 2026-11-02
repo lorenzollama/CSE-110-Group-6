@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { keyToDirection, Minigame2Controller } from "../minigames/minigame2/controller.ts";
-import type { GameState } from "../minigames/minigame2/types.ts";
-import type { Minigame2View } from "../minigames/minigame2/view.ts";
+import { keyToDirection, Minigame2Controller } from "./controller.ts";
+import type { GameState } from "./types.ts";
+import type { Minigame2View } from "./view.ts";
 
 // Example data: the state the fake game returns after every move
 const STATE_AFTER_MOVE: GameState = {
@@ -105,5 +105,18 @@ describe("Minigame2Controller.handleKeyDown", () => {
     const event = pressKey(controller, "ArrowUp", true);
 
     expect(event.preventDefault).toHaveBeenCalled();
+  });
+
+  it("leaves Ctrl, Cmd and Alt shortcuts (like Ctrl+D) to the browser", () => {
+    const { game, controller } = setup();
+    const withCtrl = { key: "d", ctrlKey: true, preventDefault: vi.fn() };
+    const withCmd = { key: "d", metaKey: true, preventDefault: vi.fn() };
+    const withAlt = { key: "d", altKey: true, preventDefault: vi.fn() };
+
+    for (const event of [withCtrl, withCmd, withAlt]) {
+      controller.handleKeyDown(event as unknown as KeyboardEvent);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    }
+    expect(game.move).not.toHaveBeenCalled();
   });
 });
