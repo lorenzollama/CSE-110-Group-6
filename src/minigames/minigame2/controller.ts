@@ -39,6 +39,8 @@ export function keyToDirection(key: string): Direction | null {
 export class Minigame2Controller extends ScreenController {
   private game: GameLogic;
   private view: Minigame2View;
+  // addEventListener and removeEventListener need the same function, so it is made once here
+  private onKeyDown = (event: KeyboardEvent): void => this.handleKeyDown(event);
 
   constructor(game: GameLogic, view: Minigame2View) {
     super();
@@ -73,6 +75,22 @@ export class Minigame2Controller extends ScreenController {
     }
 
     this.view.draw(this.game.move(direction));
+  }
+
+  /**
+   * Shows Minigame 2 and starts listening for key presses
+   */
+  show(): void {
+    this.view.show();
+    window.addEventListener("keydown", this.onKeyDown);
+  }
+
+  /**
+   * Stops listening for key presses and hides Minigame 2
+   */
+  hide(): void {
+    window.removeEventListener("keydown", this.onKeyDown);
+    this.view.hide();
   }
 
   getView(): Minigame2View {
