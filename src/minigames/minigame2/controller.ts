@@ -61,6 +61,11 @@ export class Minigame2Controller extends ScreenController {
    * A game key makes one move and redraws the board. Other keys are left alone.
    */
   handleKeyDown(event: KeyboardEvent): void {
+    // leave shortcuts like Ctrl+D (bookmark) or Cmd+S (save) to the browser
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
     const direction = keyToDirection(event.key);
     if (direction === null) {
       return; // not a game key, so let the browser handle it as usual

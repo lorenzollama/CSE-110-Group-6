@@ -106,4 +106,17 @@ describe("Minigame2Controller.handleKeyDown", () => {
 
     expect(event.preventDefault).toHaveBeenCalled();
   });
+
+  it("leaves Ctrl, Cmd and Alt shortcuts (like Ctrl+D) to the browser", () => {
+    const { game, controller } = setup();
+    const withCtrl = { key: "d", ctrlKey: true, preventDefault: vi.fn() };
+    const withCmd = { key: "d", metaKey: true, preventDefault: vi.fn() };
+    const withAlt = { key: "d", altKey: true, preventDefault: vi.fn() };
+
+    for (const event of [withCtrl, withCmd, withAlt]) {
+      controller.handleKeyDown(event as unknown as KeyboardEvent);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    }
+    expect(game.move).not.toHaveBeenCalled();
+  });
 });
