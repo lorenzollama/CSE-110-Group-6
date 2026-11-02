@@ -2,9 +2,9 @@ import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { StartController } from "./screens/start/StartController";
-import { Minigame2Controller } from "../minigames/minigame2/controller.ts";
-import { SampleGame } from "../minigames/minigame2/sampleGame.ts";
-import { Minigame2View } from "../minigames/minigame2/view.ts";
+import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
+import { SampleGame } from "./minigames/minigame2/sampleGame.ts";
+import { Minigame2View } from "./minigames/minigame2/view.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;

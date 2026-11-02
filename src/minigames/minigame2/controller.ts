@@ -1,4 +1,4 @@
-import { ScreenController } from "../../src/types.ts";
+import { ScreenController } from "../../types.ts";
 import type { GameLogic } from "./types.ts";
 import type { Minigame2View } from "./view.ts";
 

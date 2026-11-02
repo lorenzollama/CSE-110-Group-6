@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { slideLine } from "../minigames/minigame2/model.ts";
+import { slideLine } from "./model.ts";
 
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
