@@ -2,6 +2,9 @@ import Konva from "konva";
 import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { StartController } from "./screens/start/StartController";
+import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
+import { Game } from "./minigames/minigame2/model.ts";
+import { Minigame2View } from "./minigames/minigame2/view.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -12,6 +15,7 @@ class App implements ScreenSwitcher {
   private popupLayer: Konva.Layer;
   private gameLayer: Konva.Layer;
   private scrapShooter: ScrapShooterController;
+  private minigame2: Minigame2Controller;
   private startController: StartController;
 
   constructor(container: string) {
@@ -30,6 +34,10 @@ class App implements ScreenSwitcher {
     this.scrapShooter = new ScrapShooterController(this, this.popupLayer);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
+
+    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View());
+    this.gameLayer.add(this.minigame2.getView().getGroup());
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.stage.add(this.gameLayer);
     this.popupLayer.moveToTop(); // popups above the game
@@ -58,6 +66,7 @@ class App implements ScreenSwitcher {
 
   switchToScreen(screen: Screen): void {
     this.scrapShooter.hide();
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.screenLayer.hide();
 
@@ -76,7 +85,9 @@ class App implements ScreenSwitcher {
         break;
 
       case "minigame2":
-        // TODO: the minigame 2 team shows their screen here
+        this.gameLayer.show();
+        this.minigame2.show();
+        this.minigame2.startNewGame();
         break;
 
       case "result":
