@@ -3,6 +3,13 @@ import type { Board, Direction, GameLogic, GameState, GameStatus } from "./types
 // set up constant grid size to be 4x4
 const GRID_SIZE = 4
 
+const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
+  left: [],
+  right: [reverseRows],
+  up: [transpose],
+  down: [transpose, reverseRows],
+}
+
 export class Game implements GameLogic {
   private board: number[][] = clear();
   private score: number = 0;
@@ -28,7 +35,28 @@ export class Game implements GameLogic {
   
   // 
   move(dir: Direction): GameState {
-    
+    let board = this.board;
+
+    // apply transformations to board based on direction
+    for (const transform of TO_LEFT[dir]) {
+      board = transform(board);
+    }
+
+    // slide line for each row and update score
+    let gained = 0;
+    board = board.map(row => {
+      const { line, gained: g } = slideLine(row);
+      gained += g;
+      return line;
+    });
+    this.score += gained;
+
+    // reverse transformations to get back to original orientation
+    for (const transform of [...TO_LEFT[dir]].reverse()) {
+      board = transform(board);
+    }
+
+    this.board = board;
   
     return this.getState();
   }

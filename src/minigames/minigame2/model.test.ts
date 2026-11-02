@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { reverseRows, slideLine, transpose } from "./model.ts";
+import { Game, reverseRows, slideLine, transpose } from "./model.ts";
+import type { Board, Direction } from "./types.ts";
+
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
   [[2, 2, 2, 2], [4, 4, 0, 0], 8],
@@ -79,5 +81,75 @@ describe("reverse rows", () => {
       [1, 2],
       [3, 4],
     ]);
+  });
+});
+
+describe("Game.move", () => {
+  // returns a new copy each time, so one test can't change another test's board
+  function startBoard(): Board {
+    return [
+      [2, 2, 4, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [2, 0, 0, 0],
+    ];
+  }
+
+  function gameWithBoard(board: Board): Game {
+    const game = new Game();
+    game.setBoard(board);
+    return game;
+  }
+
+  // the same start board moved each way: one pair of 2s merges, so every move scores 4
+  const directionCases: Array<[Direction, Board]> = [
+    ["left", [[4, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0]]],
+    ["right", [[0, 0, 4, 4], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 2]]],
+    ["up", [[4, 2, 4, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]],
+    ["down", [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [4, 2, 4, 0]]],
+  ];
+
+  for (const [direction, expected] of directionCases) {
+    it(`slides and merges tiles ${direction}`, () => {
+      const state = gameWithBoard(startBoard()).move(direction);
+
+      expect(state.board).toEqual(expected);
+      expect(state.score).toBe(4);
+    });
+
+    // checks both moves: if move() changed some shared state, one of the two would be wrong
+    it(`gives the same result every time it moves ${direction}`, () => {
+      const game = gameWithBoard(startBoard());
+      expect(game.move(direction).board).toEqual(expected);
+
+      game.setBoard(startBoard());
+      expect(game.move(direction).board).toEqual(expected);
+    });
+  }
+
+  it("adds up the score across moves", () => {
+    const game = gameWithBoard([
+      [2, 2, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [4, 0, 0, 0],
+    ]);
+
+    expect(game.move("left").score).toBe(4); // 2 + 2
+    expect(game.move("up").score).toBe(12); // then 4 + 4
+  });
+
+  it("changes nothing when no tile can move that way", () => {
+    const board: Board = [
+      [2, 4, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ];
+
+    const state = gameWithBoard(board).move("left");
+
+    expect(state.board).toEqual(board);
+    expect(state.score).toBe(0);
   });
 });
