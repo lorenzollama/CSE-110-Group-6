@@ -23,8 +23,6 @@ export class StartController extends ScreenController {
   private handleStartClick(screen: Screen): void {
     this.screenSwitcher.switchToScreen(screen);
   }
-  //mini game 1 button
-  //mini game 2 button
   getView(): StartView {
     return this.view;
   }

@@ -111,10 +111,6 @@ export class StartView implements View {
 		this.group.add(m2ButtonGroup);
 	}
 
-  
-
- 
-
   show(): void {
     // TODO
     this.group.visible(true);

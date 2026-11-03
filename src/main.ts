@@ -3,6 +3,9 @@ import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { Minigame1Controller } from "./minigames/minigame1/main";
 import { StartController } from "./screens/start/StartController";
+import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
+import { Game } from "./minigames/minigame2/model.ts";
+import { Minigame2View } from "./minigames/minigame2/view.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -15,6 +18,7 @@ class App implements ScreenSwitcher {
   private minigame1Layer: Konva.Layer;
   private scrapShooter: ScrapShooterController;
   private minigame1: Minigame1Controller;
+  private minigame2: Minigame2Controller;
   private startController: StartController;
 
   constructor(container: string) {
@@ -30,11 +34,16 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController();
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
+
+    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View());
+    this.gameLayer.add(this.minigame2.getView().getGroup());
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.stage.add(this.gameLayer);
+    this.popupLayer.moveToTop(); // popups above the game
 
     this.minigame1Layer = new Konva.Layer();
     this.stage.add(this.minigame1Layer);
@@ -64,6 +73,7 @@ class App implements ScreenSwitcher {
 
   switchToScreen(screen: Screen): void {
     this.scrapShooter.hide();
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.screenLayer.hide();
     this.minigame1.hide();
@@ -85,7 +95,9 @@ class App implements ScreenSwitcher {
         break;
 
       case "minigame2":
-        // TODO: the minigame 2 team shows their screen here
+        this.gameLayer.show();
+        this.minigame2.show();
+        this.minigame2.startNewGame();
         break;
 
       case "result":

@@ -2,6 +2,7 @@
 export interface Question {
   prompt: string;
   answer: number;
+  explanation: string; // shown in the wrong-answer popup
 }
 
 const MIN_FACTOR = 2;
@@ -15,7 +16,11 @@ function randomFactor(rng: () => number): number {
 export function makeQuestion(rng: () => number = Math.random): Question {
   const a = randomFactor(rng);
   const b = randomFactor(rng);
-  return { prompt: `${a} × ${b}`, answer: a * b };
+  return {
+    prompt: `${a} × ${b}`,
+    answer: a * b,
+    explanation: `${a} × ${b} means ${a} groups of ${b}, which makes ${a * b}.`,
+  };
 }
 
 /** True if the typed number is the right answer to the question. */
