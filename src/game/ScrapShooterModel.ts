@@ -2,6 +2,7 @@ import { isCorrect, makeQuestion, type Question } from './logic/questions';
 
 // Number of fixed spots where scraps sit (positions live in the view).
 export const SLOT_COUNT = 4;
+export const MAX_HEALTH = 3;
 const MAX_DIGITS = 3;
 // PLACEHOLDER: Every submitted answer counts, right or wrong. The game ends after this many.
 export const QUESTIONS_PER_GAME = 10;
@@ -26,6 +27,7 @@ export class ScrapShooterModel {
   private typed = '';
   private correct = 0;
   private answered = 0;
+  private health = MAX_HEALTH;
 
   constructor() {
     for (let slot = 0; slot < SLOT_COUNT; slot++) this.spawnScrap(slot);
@@ -44,6 +46,15 @@ export class ScrapShooterModel {
     return this.correct;
   }
 
+  /**How many hits the player can still take. */
+  getHealth(): number {
+	return this.health;
+  }
+
+  loseHealth(): void{
+
+  this.health = Math.max(0, this.health - 1);
+  }
   /** Percent of answers that were right, 0-100. */
   getAccuracy(): number {
     return this.answered === 0 ? 0 : Math.round((this.correct / this.answered) * 100);
@@ -74,6 +85,7 @@ export class ScrapShooterModel {
       const spawned = this.spawnScrap(target.slot); // the new scrap goes to the back of the line
       return { type: 'correct', hit: target, spawned };
     }
+	this.loseHealth();
     return { type: 'incorrect', target, answer: value };
   }
 
