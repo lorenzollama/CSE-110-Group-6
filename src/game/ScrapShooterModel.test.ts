@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUESTIONS_PER_GAME, ScrapShooterModel } from './ScrapShooterModel';
+import { MAX_HEALTH, QUESTIONS_PER_GAME, ScrapShooterModel } from './ScrapShooterModel';
 
 function answer(model: ScrapShooterModel, value: number) {
   String(value).split('').forEach(digit => model.typeDigit(digit));
@@ -60,5 +60,44 @@ describe('ScrapShooterModel scoring', () => {
     for (let i = 0; i < QUESTIONS_PER_GAME; i++) answerWrong(model);
     expect(answerRight(model)).toEqual({ type: 'ignored' });
     expect(model.getScore()).toBe(0);
+  });
+});
+
+describe('ScrapShooterModel health', () => {
+  it('starts at max health', () => {
+    const model = new ScrapShooterModel();
+    expect(model.getHealth()).toBe(MAX_HEALTH);
+  });
+
+  it('loses one hit point at a time', () => {
+    const model = new ScrapShooterModel();
+    model.loseHealth();
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
+    model.loseHealth();
+    expect(model.getHealth()).toBe(MAX_HEALTH - 2);
+  });
+
+  it('never goes below 0', () => {
+    const model = new ScrapShooterModel();
+    for (let i = 0; i < MAX_HEALTH + 2; i++) model.loseHealth();
+    expect(model.getHealth()).toBe(0);
+  });
+
+  it('loses one hit point on a wrong answer', () => {
+    const model = new ScrapShooterModel();
+    answerWrong(model);
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
+  });
+
+  it('keeps its health on a right answer', () => {
+    const model = new ScrapShooterModel();
+    answerRight(model);
+    expect(model.getHealth()).toBe(MAX_HEALTH);
+  });
+
+  it('stops at 0 after repeated wrong answers', () => {
+    const model = new ScrapShooterModel();
+    for (let i = 0; i < MAX_HEALTH + 1; i++) answerWrong(model);
+    expect(model.getHealth()).toBe(0);
   });
 });

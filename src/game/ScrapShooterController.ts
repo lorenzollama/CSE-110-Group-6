@@ -3,7 +3,7 @@ import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher } from '../types';
-import { ScrapShooterModel } from './ScrapShooterModel';
+import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 
 /**
@@ -38,6 +38,7 @@ export class ScrapShooterController extends ScreenController {
     model.getScraps().forEach(scrap => this.view.addScrap(scrap));
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
+    this.view.showHealth(model.getHealth(), MAX_HEALTH);
 
     window.addEventListener('keydown', this.onKeyDown);
 
@@ -80,6 +81,7 @@ export class ScrapShooterController extends ScreenController {
     const result = model.submit();
     if (result.type === 'ignored') return;
     this.view.showTyped(model.getTyped());
+    this.view.showHealth(model.getHealth(), MAX_HEALTH);
 
     if (result.type === 'correct') {
       this.view.shoot(result.hit.slot);

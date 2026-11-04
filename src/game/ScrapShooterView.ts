@@ -27,6 +27,7 @@ export class ScrapShooterView implements View {
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
   private highScoreText!: Konva.Text;
+private healthBar!: Konva.Group;
 
   getGroup(): Konva.Group {
     return this.group;
@@ -71,6 +72,7 @@ export class ScrapShooterView implements View {
         fill: 'black',
         listening: false,
       }),
+
     );
 
     this.highScoreText = new Konva.Text({
@@ -83,8 +85,10 @@ export class ScrapShooterView implements View {
       fill: 'white',
     });
 
+this.healthBar = new Konva.Group({ x: 20, y: 16 });
+
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText, this.highScoreText);
+    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.healthBar);
   }
 
   destroy(): void {
@@ -148,6 +152,24 @@ export class ScrapShooterView implements View {
     this.highScoreText.text(`High score: ${highScore}`);
     this.group.getLayer()?.batchDraw();
   }
+
+  showHealth(health: number, maxHealth: number): void {
+  this.healthBar.destroyChildren();
+  for (let i = 0; i < maxHealth; i++) {
+    this.healthBar.add(
+      new Konva.Rect({
+        x: i * 30,
+        y: 0,
+        width: 22,
+        height: 22,
+        stroke: 'white',
+        strokeWidth: 2,
+        fill: i < health ? 'white' : 'black',
+      }),
+    );
+  }
+  this.group.getLayer()?.batchDraw();
+}
 
   // ------------------------------------------------------------- actions
 
