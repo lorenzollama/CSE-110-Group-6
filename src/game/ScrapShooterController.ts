@@ -3,9 +3,8 @@ import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher } from '../types';
-import { ScrapShooterModel } from './ScrapShooterModel';
-import { ScrapShooterView } from './ScrapShooterView';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
+import { ScrapShooterView } from './ScrapShooterView';
 
 /**
  * Scraps sit on screen and the first one in the list is the target. Type its answer
