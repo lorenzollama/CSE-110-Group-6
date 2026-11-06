@@ -1,0 +1,1 @@
+export const MAX_LIVES: number = 3

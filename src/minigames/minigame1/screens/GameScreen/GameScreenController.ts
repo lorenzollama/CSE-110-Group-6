@@ -12,14 +12,8 @@ export class GameScreenController extends ScreenController {
 	private model: GameScreenModel;
 	private view: GameScreenView;
 	private screenSwitcher: ScreenSwitcher;
+	private currentSequence: Coordinates[] = [];
 
-	/**
-	 * Creates the model and view and connects player selection
-	 * to sequence checking, light highlighting, and status messages
-	 *
-	 * @param screenSwitcher the service used to navigate between screens
-	 * @param stage the Konva stage displaying the game
-	 */
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
@@ -37,7 +31,30 @@ export class GameScreenController extends ScreenController {
 				this.view.updateStatus("Correct! Keep Going.");
 			}
 			else if (result === "incorrect") {
-				this.view.updateStatus("Incorrect sequence. Attempt ended.");
+				this.model.decrementLives();
+				this.view.updateLives(this.model.getLives());
+
+				if (this.model.getLives() <= 0) { // no lives = game over
+					this.view.updateStatus("Out of lives! Game Over.");
+					this.endGame();
+				} else { // still have lives = replay
+					this.view.updateStatus("Incorrect! Here is the correct square.");
+					const expected = this.model.getCurrentExpected();
+					this.model.resetCurrentSequence();
+
+					// blink the correct square -> replay round
+					if (expected) {
+						this.view.getGrid().blink([expected], () => {
+							setTimeout(() => {
+								this.playSequence(this.currentSequence);
+							}, 500);
+						});
+					} else {
+						setTimeout(() => {
+							this.playSequence(this.currentSequence);
+						}, 1000);
+					}
+				}
 			}
 			else if (result === "complete") {
 				this.view.updateStatus("Sequence complete!");
@@ -46,35 +63,35 @@ export class GameScreenController extends ScreenController {
 		});
 	}
 
-	/**
-	 * Start the game
-	 * Displays instructions and enables input after playback finishes
-	 */
 	startGame(): void {
-		// Reset model state
+		// reset model state
 		this.model.reset();
 
-		// Update the score and display playback instructions
+		// update the score and display playback instructions
 		this.view.updateScore(this.model.getScore());
 		this.view.updateStatus("Watch the sequence.");
+		this.view.updateLives(this.model.getLives());
 		this.view.show();
 
 		// example sequence, pass coords into grid
-		const sequence: Coordinates[] = [
+		this.currentSequence = [
 			{ row: 0, col: 0 },
 			{ row: 0, col: 1 },
 			{ row: 1, col: 1 },
 			{ row: 2, col: 2 },
 		];
+		
+		this.playSequence(this.currentSequence);
+	}
+	
+	private playSequence(sequence: Coordinates[]): void {
+		this.view.updateStatus("Watch the sequence.");
 		this.view.getGrid().blink(sequence, () => {
 			this.model.startPlayerTurn(sequence);
 			this.view.updateStatus("Your turn! Repeat the sequence.");
 		});
 	}
 
-	/**
-	 * End the game
-	 */
 	private endGame(): void {
 		// Switch to results screen with final score
 		this.screenSwitcher.switchToScreen({
@@ -83,22 +100,17 @@ export class GameScreenController extends ScreenController {
 		});
 	}
 
+	// TODO - use for rounds
 	getRandomCoordinates(): Coordinates {
 		const row = Math.floor(Math.random() * this.view.getGrid().getRowCount());
 		const col = Math.floor(Math.random() * this.view.getGrid().getColCount());
 		return { row, col };
 	}
 
-	/**
-	 * Get final score
-	 */
 	getFinalScore(): number {
 		return this.model.getScore();
 	}
-
-	/**
-	 * Get the view group
-	 */
+	
 	getView(): GameScreenView {
 		return this.view;
 	}
