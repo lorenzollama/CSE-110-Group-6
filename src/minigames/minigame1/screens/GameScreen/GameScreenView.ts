@@ -14,6 +14,7 @@ export class GameScreenView implements View {
 	private scoreText: Konva.Text;
 	private statusText: Konva.Text;
 	private livesText: Konva.Text;
+	private roundText: Konva.Text;
 	private stage: Konva.Stage;
 	private background: Konva.Rect;
 	private selectionHandler?: (row: number, col: number) => void;
@@ -47,6 +48,15 @@ export class GameScreenView implements View {
 			fill: "white",
 			});
 		this.group.add(this.livesText);
+
+		this.roundText = new Konva.Text({
+			text: "Round: 1",
+			fontSize: 24,
+			fontFamily: "Arial",
+			fill: "white",
+			listening: false,
+		});
+		this.group.add(this.roundText);
 
 		this.statusText = new Konva.Text({
 			text: "",
@@ -107,6 +117,12 @@ export class GameScreenView implements View {
 			y: this.statusText.y() + this.statusText.height() + SCORE_GAP,
 		});
 
+		// Keep the current round near the top right corner
+		this.roundText.position({
+			x: this.stage.width() - this.roundText.width() - 24,
+			y: 24
+		});
+
 		this.group.getLayer()?.batchDraw();
 	}
 
@@ -125,6 +141,11 @@ export class GameScreenView implements View {
 
 	updateScore(score: number): void {
 		this.scoreText.text(`Score: ${score}`);
+		this.centerLayout();
+	}
+
+	updateRound(round: number): void {
+		this.roundText.text(`Round: ${round}`);
 		this.centerLayout();
 	}
 

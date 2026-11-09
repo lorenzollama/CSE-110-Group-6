@@ -57,8 +57,13 @@ export class GameScreenController extends ScreenController {
 				}
 			}
 			else if (result === "complete") {
-				this.view.updateStatus("Sequence complete!");
-				this.endGame();
+				const advanced = this.model.advanceRound(
+					this.getRandomCoordinates()
+				);
+				if (advanced) {
+					this.currentSequence = this.model.getSequence();
+					this.playSequence(this.currentSequence);
+				}
 			}
 		});
 	}
@@ -72,19 +77,12 @@ export class GameScreenController extends ScreenController {
 		this.view.updateStatus("Watch the sequence.");
 		this.view.updateLives(this.model.getLives());
 		this.view.show();
-
-		// example sequence, pass coords into grid
-		this.currentSequence = [
-			{ row: 0, col: 0 },
-			{ row: 0, col: 1 },
-			{ row: 1, col: 1 },
-			{ row: 2, col: 2 },
-		];
-		
+		this.currentSequence = [this.getRandomCoordinates()];
 		this.playSequence(this.currentSequence);
 	}
 	
 	private playSequence(sequence: Coordinates[]): void {
+		this.view.updateRound(this.model.getRound());
 		this.view.updateStatus("Watch the sequence.");
 		this.view.getGrid().blink(sequence, () => {
 			this.model.startPlayerTurn(sequence);
@@ -100,7 +98,6 @@ export class GameScreenController extends ScreenController {
 		});
 	}
 
-	// TODO - use for rounds
 	getRandomCoordinates(): Coordinates {
 		const row = Math.floor(Math.random() * this.view.getGrid().getRowCount());
 		const col = Math.floor(Math.random() * this.view.getGrid().getColCount());

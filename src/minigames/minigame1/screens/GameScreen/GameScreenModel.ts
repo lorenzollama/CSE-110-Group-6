@@ -3,6 +3,7 @@ import { MAX_LIVES } from "../../constants.ts";
 
 export class GameScreenModel {
 	private score = 0;
+	private round = 1;
 	private lives = 0;
 	private sequence: Coordinates[] = [];
 	private nextSelectionIndex = 0;
@@ -12,6 +13,7 @@ export class GameScreenModel {
 	//reset everthing
 	reset(): void {
 		this.score = 0;
+		this.round = 1;
 		this.lives = MAX_LIVES;
 		this.sequence = [];
 		this.nextSelectionIndex = 0;
@@ -60,6 +62,28 @@ export class GameScreenModel {
 			return "complete";
 		}
 		return "correct";
+	}
+
+	advanceRound(newSignal: Coordinates): boolean {
+		if (this.acceptingInput || this.sequence.length == 0 ||
+			this. nextSelectionIndex !== this.sequence.length) {
+			return false;
+		}
+		this.sequence.push({row: newSignal.row, col: newSignal.col});
+		this.round++;
+		this.resetCurrentSequence();
+		return true;
+	}
+
+	getSequence(): Coordinates[] {
+		return this.sequence.map(signal => ({
+			row: signal.row,
+			col: signal.col,
+		}));
+	}
+
+	getRound(): number {
+		return this.round;
 	}
 
 	incrementScore(): void {
