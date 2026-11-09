@@ -53,7 +53,7 @@ export class StartView implements View {
 		startText.offsetX(startText.width() / 2);
 		mainButtonGroup.add(mainButton);
 		mainButtonGroup.add(startText);
-		mainButtonGroup.on("click", () => onStartClick({ type: "main game" }));
+		mainButtonGroup.on("click", () => onStartClick({ type:"levels" }));
 		this.group.add(mainButtonGroup);
 
     const m1ButtonGroup = new Konva.Group();
