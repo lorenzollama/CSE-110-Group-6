@@ -145,6 +145,60 @@ describe("GameScreenModel sequence checking", () => {
         });
 });
 
+// user story 3
+describe("GameScreenModel round progression", () => {
+        // Test 1: A complete correct response increases the round by exactly one
+        it("advances one round after a complete correct response", () => {
+                const model = new GameScreenModel();
+                model.reset();
+
+                const firstSignal = { row: 0, col: 0};
+                model.startPlayerTurn([firstSignal]);
+                const startingRound = model.getRound();
+
+                expect(model.checkSelection(firstSignal)).toBe("complete");
+                expect(model.advanceRound({ row: 1, col: 1})).toBe(true);
+                expect(model.getRound()).toBe(startingRound + 1);
+        });
+
+        // Test 2: The next round keeps the old signals in order and adds one signal
+        it("preserves the sequence and appends exactly one signal", () => {
+                const model = new GameScreenModel();
+                model.reset();
+
+                const firstSignal = { row: 0, col: 0};
+                const secondSignal = { row: 1, col: 1};
+                const newSignal = { row: 2, col: 2};
+                const originalSequence = [firstSignal, secondSignal];
+
+                model.startPlayerTurn(originalSequence);
+
+                expect(model.checkSelection(firstSignal)).toBe("correct");
+                expect(model.checkSelection(secondSignal)).toBe("complete");
+                expect(model.advanceRound(newSignal)).toBe(true);
+
+                const extendedSequence = model.getSequence();
+
+                expect(extendedSequence).toEqual([...originalSequence, newSignal]);
+                expect(extendedSequence).toHaveLength(originalSequence.length + 1);
+        });
+
+        // Test 3: A wrong selection keeps the current round and sequence
+        it("keeps the same round and sequence after a mistake", () => {
+                const model = new GameScreenModel();
+                model.reset();
+
+                const sequence = [{ row: 0, col: 0}];
+                model.startPlayerTurn(sequence);
+                const startingRound = model.getRound();
+
+                expect(model.checkSelection({ row: 2, col: 2})).toBe("incorrect");
+                expect(model.advanceRound({ row: 1, col: 1})).toBe(false);
+                expect(model.getRound()).toBe(startingRound);
+                expect(model.getSequence()).toEqual(sequence);
+        });
+});
+
 // user story 4
 describe("GameScreenModel lives and retry logic", () => {
         // MGTEST-31: feedback identifies the expected signal and incorrect selection
