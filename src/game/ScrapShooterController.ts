@@ -98,9 +98,10 @@ export class ScrapShooterController extends ScreenController {
           correctAnswer: String(question.answer),
           explanation: question.explanation,
         },
-        // If this was the last answer, show the level-complete popup after "Got it".
+        // If this was the last answer, show the level-complete popup after "Got it". and if the player lost all health, show the game-over popup after "Got it".
         () => {
-          if (model.isOver()) this.endGame(model);
+          if (model.isLost()) this.gameOver(model);
+          else if(model.isOver()) this.endGame(model);
         },
       );
       return;
@@ -119,7 +120,25 @@ export class ScrapShooterController extends ScreenController {
         onMenu: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
       },
     );
+    
+    submitHighScore(model.getScore())
+      .then(({ highScore }) => {
+        if (this.model === model) this.view.showHighScore(highScore);
+      })
+      .catch(err => console.warn('Could not save high score', err));
+  }
 
+  private gameOver(model: ScrapShooterModel): void {
+    window.removeEventListener('keydown', this.onKeyDown);
+
+    this.popups.showGameOver(
+      {  score: model.getScore(), accuracy: model.getAccuracy() },
+      {
+        onTryAgain: () => this.restart(),
+        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
+      },
+    );
+    
     submitHighScore(model.getScore())
       .then(({ highScore }) => {
         if (this.model === model) this.view.showHighScore(highScore);

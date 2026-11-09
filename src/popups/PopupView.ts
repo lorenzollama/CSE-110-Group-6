@@ -1,9 +1,14 @@
 import Konva from "konva";
-import type { LevelCompleteInfo, WrongAnswerInfo } from "./PopupModel";
+import type { LevelCompleteInfo, WrongAnswerInfo , GameOverInfo} from "./PopupModel";
 
 /** What the level-complete popup's two buttons do. */
 export interface LevelCompleteActions {
   onNextLevel: () => void;
+  onMenu: () => void;
+}
+
+export interface GameOverActions {
+  onTryAgain: () => void;
   onMenu: () => void;
 }
 
@@ -59,8 +64,33 @@ export class PopupView {
       y: 125, width: W, fontSize: 18, align: "center", fill: "#374151", lineHeight: 1.5,
       text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
     }));
-
     box.add(makeButton(40, H - 70, "Next level", actions.onNextLevel, "#16a34a"));
+    box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
+    //pop up on the title
+    title.scale({ x: 0.6, y: 0.6 });
+    new Konva.Tween({ node: title, scaleX: 1, scaleY: 1, duration: 0.3, easing: Konva.Easings.BackEaseOut }).play();
+    this.layer.batchDraw();
+  }
+
+  showGameOver(info: GameOverInfo, actions: GameOverActions): void {
+    const W = 420, H = 300;
+    const box = this.openFrame(W, H);
+
+    const title = new Konva.Text({
+      y: 28, width: W, text: "GAME OVER!", fontSize: 34, fontStyle: "bold",
+      fill: "#dc2626", align: "center",
+    });
+    box.add(title);
+    box.add(new Konva.Text({
+      y: 80, width: W, fontSize: 20, align: "center",
+      text: `You ran out of health!`,
+    }));
+    box.add(new Konva.Text({
+      y: 125, width: W, fontSize: 18, align: "center", fill: "#374151", lineHeight: 1.5,
+      text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
+    }));
+
+    box.add(makeButton(40, H - 70, "Try again", actions.onTryAgain, "#16a34a"));
     box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
 
     // small "pop" on the title
