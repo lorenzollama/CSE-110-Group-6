@@ -97,6 +97,7 @@ class App implements ScreenSwitcher {
 
       case "main game":
         this.gameLayer.show();
+        this.scrapShooter.setTopic(screen.topic);
         this.scrapShooter.show();
         break;
 

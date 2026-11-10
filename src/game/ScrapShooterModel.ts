@@ -1,4 +1,5 @@
-import { isCorrect, makeQuestion, type Question } from './logic/questions';
+import type { Topic } from '../types';
+import { isCorrect, makeQuestionForTopic, type Question } from './logic/questions';
 
 // Number of fixed spots where scraps sit (positions live in the view).
 export const SLOT_COUNT = 4;
@@ -30,7 +31,7 @@ export class ScrapShooterModel {
   private answered = 0;
   private health = MAX_HEALTH;
 
-  constructor() {
+  constructor(private topic: Topic = 'multiplication') {
     for (let slot = 0; slot < SLOT_COUNT; slot++) this.spawnScrap(slot);
   }
 
@@ -93,7 +94,7 @@ export class ScrapShooterModel {
   }
 
   private spawnScrap(slot: number): Scrap {
-    const scrap = { question: makeQuestion(), slot };
+    const scrap = { question: makeQuestionForTopic(this.topic), slot };
     this.scraps.push(scrap);
     return scrap;
   }

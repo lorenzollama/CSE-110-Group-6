@@ -2,7 +2,7 @@ import type Konva from 'konva';
 import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
-import { ScreenController, type ScreenSwitcher } from '../types';
+import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 
@@ -15,6 +15,7 @@ export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
   private model: ScrapShooterModel | null = null;
   private popups: PopupController;
+  private topic: Topic = 'multiplication';
 
   constructor(
     private screenSwitcher: ScreenSwitcher,
@@ -24,6 +25,11 @@ export class ScrapShooterController extends ScreenController {
     this.popups = new PopupController(new PopupView(popupLayer));
   }
 
+  /** Sets which kind of questions the next game asks. Call before show(). */
+  setTopic(topic: Topic): void {
+    this.topic = topic;
+  }
+
   getView(): ScrapShooterView {
     return this.view;
   }
@@ -31,7 +37,7 @@ export class ScrapShooterController extends ScreenController {
   show(): void {
     if (this.model) return;
     this.view.show();
-    const model = new ScrapShooterModel();
+    const model = new ScrapShooterModel(this.topic);
     this.model = model;
 
     this.view.build();

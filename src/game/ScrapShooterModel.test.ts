@@ -57,6 +57,30 @@ describe('ScrapShooterModel scoring', () => {
   });
 });
 
+describe('ScrapShooterModel topics', () => {
+  it('asks multiplication questions by default', () => {
+    const prompts = new ScrapShooterModel().getScraps().map(s => s.question.prompt);
+    prompts.forEach(prompt => expect(prompt).toMatch(/^\d+ × \d+$/));
+  });
+
+  it('asks division questions for the division topic', () => {
+    const prompts = new ScrapShooterModel('division').getScraps().map(s => s.question.prompt);
+    prompts.forEach(prompt => expect(prompt).toMatch(/^\d+ ÷ \d+$/));
+  });
+
+  it('asks fraction questions for the simplification topic', () => {
+    const prompts = new ScrapShooterModel('simplification').getScraps().map(s => s.question.prompt);
+    prompts.forEach(prompt => expect(prompt).toMatch(/^\d+\/\d+$/));
+  });
+
+  it('keeps the same topic for new scraps after a right answer', () => {
+    const model = new ScrapShooterModel('simplification');
+    const result = answerRight(model);
+    expect(result.type).toBe('correct');
+    if (result.type === 'correct') expect(result.spawned.question.prompt).toMatch(/^\d+\/\d+$/);
+  });
+});
+
 describe('ScrapShooterModel typing', () => {
   it('accepts digits and "/" for fractions', () => {
     const model = new ScrapShooterModel();

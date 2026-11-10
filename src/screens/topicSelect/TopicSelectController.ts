@@ -25,8 +25,7 @@ export class TopicSelectController extends ScreenController {
 
   private handleTopicClick(topic: Topic): void {
     this.model.selectTopic(topic);
-    // TODO: pass the topic to the main game so it asks matching questions
-    this.screenSwitcher.switchToScreen({ type: "main game" });
+    this.screenSwitcher.switchToScreen({ type: "main game", topic });
   }
 
   getSelectedTopic(): Topic | null {
