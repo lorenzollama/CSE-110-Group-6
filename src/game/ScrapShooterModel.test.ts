@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_HEALTH, QUESTIONS_PER_GAME, ScrapShooterModel } from './ScrapShooterModel';
 
-function answer(model: ScrapShooterModel, value: number) {
-  String(value).split('').forEach(digit => model.typeDigit(digit));
+function answer(model: ScrapShooterModel, value: string) {
+  value.split('').forEach(key => model.typeKey(key));
   return model.submit();
 }
 
+const WRONG = '0'; // no question has 0 as its answer
 const answerRight = (model: ScrapShooterModel) => answer(model, model.getScraps()[0].question.answer);
-const answerWrong = (model: ScrapShooterModel) => answer(model, model.getScraps()[0].question.answer + 1);
+const answerWrong = (model: ScrapShooterModel) => answer(model, WRONG);
 
 describe('ScrapShooterModel scoring', () => {
   it('starts at 0 and not over', () => {
@@ -48,11 +49,31 @@ describe('ScrapShooterModel scoring', () => {
   it('reports which scrap a wrong answer was for and what was typed', () => {
     const model = new ScrapShooterModel();
     const target = model.getScraps()[0];
-    expect(answer(model, target.question.answer + 1)).toEqual({
+    expect(answer(model, WRONG)).toEqual({
       type: 'incorrect',
       target,
-      answer: target.question.answer + 1,
+      answer: WRONG,
     });
+  });
+});
+
+describe('ScrapShooterModel typing', () => {
+  it('accepts digits and "/" for fractions', () => {
+    const model = new ScrapShooterModel();
+    '2/3'.split('').forEach(key => model.typeKey(key));
+    expect(model.getTyped()).toBe('2/3');
+  });
+
+  it('ignores other keys', () => {
+    const model = new ScrapShooterModel();
+    ['a', '-', '.', ' '].forEach(key => model.typeKey(key));
+    expect(model.getTyped()).toBe('');
+  });
+
+  it('stops at 5 characters', () => {
+    const model = new ScrapShooterModel();
+    '12/185'.split('').forEach(key => model.typeKey(key));
+    expect(model.getTyped()).toBe('12/18');
   });
 
   it('ignores answers after the game is over', () => {

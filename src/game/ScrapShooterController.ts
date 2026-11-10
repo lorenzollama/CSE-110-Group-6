@@ -63,9 +63,9 @@ export class ScrapShooterController extends ScreenController {
     if (!this.model || this.popups.isOpen()) return; // typing pauses while a popup is open
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (/^[0-9]$/.test(e.key)) {
-      e.preventDefault();
-      this.model.typeDigit(e.key);
+    if (/^[0-9/]$/.test(e.key)) {
+      e.preventDefault(); // also stops "/" from opening Firefox's quick find
+      this.model.typeKey(e.key);
       this.view.showTyped(this.model.getTyped());
     } else if (e.key === 'Backspace') {
       e.preventDefault();
@@ -94,8 +94,8 @@ export class ScrapShooterController extends ScreenController {
       this.popups.showWrongAnswer(
         {
           question: question.prompt,
-          playerAnswer: String(result.answer),
-          correctAnswer: String(question.answer),
+          playerAnswer: result.answer,
+          correctAnswer: question.answer,
           explanation: question.explanation,
         },
         // If this was the last answer, show the level-complete popup after "Got it".
