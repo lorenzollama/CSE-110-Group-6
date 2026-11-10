@@ -3,6 +3,7 @@ import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { Minigame1Controller } from "./minigames/minigame1/main";
 import { StartController } from "./screens/start/StartController";
+import { TopicSelectController } from "./screens/topicSelect/TopicSelectController";
 import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
 import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
@@ -20,6 +21,7 @@ class App implements ScreenSwitcher {
   private minigame1: Minigame1Controller;
   private minigame2: Minigame2Controller;
   private startController: StartController;
+  private topicSelect: TopicSelectController;
 
   constructor(container: string) {
     this.stage = new Konva.Stage({
@@ -61,6 +63,8 @@ class App implements ScreenSwitcher {
 
     this.startController = new StartController(this);
     this.screenLayer.add(this.startController.getView().getGroup());
+    this.topicSelect = new TopicSelectController(this);
+    this.screenLayer.add(this.topicSelect.getView().getGroup());
     this.centerScreens();
     this.screenLayer.draw();
 
@@ -76,11 +80,19 @@ class App implements ScreenSwitcher {
     this.minigame2.hide();
     this.gameLayer.hide();
     this.screenLayer.hide();
+    this.startController.hide();
+    this.topicSelect.hide();
     this.minigame1.hide();
 
     switch (screen.type) {
       case "menu":
         this.screenLayer.show();
+        this.startController.show();
+        break;
+
+      case "topic select":
+        this.screenLayer.show();
+        this.topicSelect.show();
         break;
 
       case "main game":
@@ -102,6 +114,7 @@ class App implements ScreenSwitcher {
 
       case "result":
         this.screenLayer.show();
+        this.startController.show();
         break;
     }
 
