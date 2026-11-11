@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GRID_SIZE } from "./constants.ts";
-import { boardsEqual, canMerge, Game, reverseRows, slideLine, transpose } from "./model.ts";
+import { boardsEqual, canMerge, Game, makeQuestion, reverseRows, slideLine, transpose } from "./model.ts";
 import type { Board, Direction } from "./types.ts";
 
 const cases: Array<[number[], number[], number]> = [
@@ -365,5 +365,33 @@ describe("Game status", () => {
 
     expect(state.board).toEqual(board);
     expect(state.status).toBe("playing");
+  });
+});
+
+describe("makeQuestion", () => {
+  // the first random number picks the kind (below 0.5 = a square root), the second picks the power
+  it.each([
+    [2, 0.5, 0.6, "2^5", 32],
+    [3, 0.5, 0.4, "3^4", 81],
+    [2, 0.4, 0.99, "√64", 8],
+    [3, 0.4, 0.5, "√81", 9],
+  ])("in base %i with %d and %d asks %s", (base, kind, power, text, answer) => {
+    expect(makeQuestion(base, fakeRandom(kind, power))).toMatchObject({ text, answer });
+  });
+
+  it("uses the lowest and highest powers", () => {
+    expect(makeQuestion(2, fakeRandom(0.5, 0)).text).toBe("2^2");
+    expect(makeQuestion(2, fakeRandom(0.5, 0.99)).text).toBe("2^6");
+    expect(makeQuestion(2, fakeRandom(0, 0)).text).toBe("√4");
+  });
+
+  it("always gives a square root with a whole number answer", () => {
+    for (let base = 2; base <= 9; base++) {
+      for (const power of [0, 0.5, 0.99]) {
+        const { answer } = makeQuestion(base, fakeRandom(0, power));
+
+        expect(Number.isInteger(answer)).toBe(true);
+      }
+    }
   });
 });

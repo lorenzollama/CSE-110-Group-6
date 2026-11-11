@@ -9,6 +9,18 @@ const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
 }
 // chance that a new tile is a 4 instead of a 2
 const FOUR_TILE_CHANCE = 0.1;
+// chance that a question is a square root instead of a power
+const SQUARE_ROOT_CHANCE = 0.5;
+// the powers a question can ask about
+const QUESTION_POWERS = [2, 3, 4, 5, 6];
+// only even powers, so the answer is a whole number (64 is 2^6, so √64 is 2^3)
+const SQUARE_ROOT_POWERS = [2, 4, 6];
+
+// a question for the player. The front end only gets the text
+export interface Question {
+  text: string;
+  answer: number;
+}
 
 export class Game implements GameLogic {
   private board: Board = clear();
@@ -165,4 +177,20 @@ export function boardsEqual(a: Board, b: Board): boolean{
 // two tiles can merge when they have the same value; empty cells (0) never merge
 export function canMerge(a: number, b: number): boolean{
   return a !== 0 && a === b;  
+}
+
+// pick a random number from the list
+function pickRandom(list: number[], random: () => number): number {
+  return list[Math.floor(random() * list.length)];
+}
+
+// make a random question for the base, either a power like 2^5 or a square root like √64
+export function makeQuestion(base: number, random: () => number): Question {
+  if (random() < SQUARE_ROOT_CHANCE) {
+    const power = pickRandom(SQUARE_ROOT_POWERS, random);
+    return { text: `√${base ** power}`, answer: base ** (power / 2) };
+  }
+
+  const power = pickRandom(QUESTION_POWERS, random);
+  return { text: `${base}^${power}`, answer: base ** power };
 }
