@@ -3,6 +3,9 @@ import { GRID_SIZE } from "./constants.ts";
 import { boardsEqual, canMerge, Game, makeQuestion, reverseRows, slideLine, transpose, turnsUntilQuestion } from "./model.ts";
 import type { Board, Direction, GameState } from "./types.ts";
 
+// Example data: a question to give the game with setQuestion
+const POWER_QUESTION = { text: "2^5", answer: 32, tile: 32 };
+
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
   [[2, 2, 2, 2], [4, 4, 0, 0], 8],
@@ -117,6 +120,12 @@ function playTurns(game: Game, turns: number): GameState {
     game.move("right");
   }
   return game.move("right");
+}
+
+// blocks the tile the way the game does, with a wrong answer
+function blockTile(game: Game, tile: number): GameState {
+  game.setQuestion({ text: "a question", answer: tile, tile });
+  return game.answer(0);
 }
 
 describe("Game.newGame", () => {
@@ -454,3 +463,98 @@ describe("makeQuestion", () => {
     }
   });
 });
+
+describe("wrong answers", () => {
+  it("blocks the tile when the answer is wrong", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(30).blocked).toEqual([32]);
+  });
+
+  it("blocks nothing when the answer is right", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(32).blocked).toEqual([]);
+  });
+
+  it("keeps the tiles from earlier wrong answers", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(30);
+    game.setQuestion({ text: "2^3", answer: 8, tile: 8 });
+
+    expect(game.answer(6).blocked).toEqual([32, 8]);
+  });
+
+  it("picks the answer as the tile for a power and the number under the root for a square root", () => {
+    expect(makeQuestion(2, fakeRandom(0.5, 0.6)).tile).toBe(32); // 2^5
+    expect(makeQuestion(2, fakeRandom(0.4, 0.99)).tile).toBe(64); // √64 has the answer 8
+  });
+
+  it("clears the blocked tiles on a new game", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(30);
+
+    expect(game.newGame().blocked).toEqual([]);
+  });
+});
+
+describe("blocked tiles", () => {
+  it("can't merge, but other tiles can", () => {
+    expect(canMerge(32, 32, [32])).toBe(false);
+    expect(canMerge(16, 16, [32])).toBe(true);
+  });
+
+  it("still slide on a move", () => {
+    const game = gameWithBoard([
+      [0, 8, 8, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    blockTile(game, 8);
+
+    const state = game.move("left");
+
+    expect(state.board[0]).toEqual([8, 8, 2, 0]);
+    expect(state.score).toBe(0);
+  });
+
+  it("can still be made by merging two smaller tiles", () => {
+    const game = gameWithBoard([
+      [4, 4, 8, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    blockTile(game, 8);
+
+    expect(game.move("left").board[0]).toEqual([8, 8, 2, 0]);
+  });
+
+  it("end the game when the only merge left is blocked", () => {
+    const game = gameWithBoard([
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 8, 8],
+    ]);
+
+    expect(blockTile(game, 8).status).toBe("over");
+  });
+
+  it("keep the game going when a different tile is blocked", () => {
+    const game = gameWithBoard([
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 8, 8],
+    ]);
+
+    expect(blockTile(game, 16).status).toBe("playing");
+  });
+});
+

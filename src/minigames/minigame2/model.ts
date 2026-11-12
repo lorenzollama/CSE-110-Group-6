@@ -22,6 +22,8 @@ const SQUARE_ROOT_POWERS = [2, 4, 6];
 export interface Question {
   text: string;
   answer: number;
+  // the tile that a wrong answer blocks
+  tile: number;
 }
 
 export class Game implements GameLogic {
@@ -42,12 +44,17 @@ export class Game implements GameLogic {
     this.board = b;
   }
 
+  // setup question to be expected
+  setQuestion(q: Question): void {
+    this.question = q;
+  }
+
   // get current state
   private getState(): GameState {
     return {
       board: this.board,
       score: this.score,
-      status: hasMoves(this.board) ? "playing" : "over",
+      status: hasMoves(this.board, this.blocked) ? "playing" : "over",
       base: this.base,
       blocked: this.blocked,
       question: this.question === null ? null : this.question.text,
@@ -78,6 +85,7 @@ export class Game implements GameLogic {
   newGame(): GameState {
     this.board = clear();
     this.score = 0;
+    this.blocked = [];
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
     this.addRandomTile();
@@ -97,7 +105,7 @@ export class Game implements GameLogic {
     // slide line for each row and update score
     let gained = 0;
     board = board.map(row => {
-      const { line, gained: g } = slideLine(row);
+      const { line, gained: g } = slideLine(row, this.blocked);
       gained += g;
       return line;
     });
@@ -117,10 +125,14 @@ export class Game implements GameLogic {
     return this.getState();
   }
 
-  // take the player's answer, clear the question and start the count over
-  answer(_value: number): GameState {
+  // check the player's answer, clear the question and start the count over
+  answer(value: number): GameState {
     if (this.question === null) {
       return this.getState();
+    }
+
+    if (value !== this.question.answer) {
+      this.blocked.push(this.question.tile);
     }
 
     this.question = null;
@@ -139,17 +151,17 @@ export class Game implements GameLogic {
 }
 
 // the player can still move if there is an empty cell or two neighbors can merge
-function hasMoves(board: Board): boolean{
+function hasMoves(board: Board, blocked: number[]): boolean{
   const size = board.length;
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       if (board[row][col] === 0) {
         return true;
       }
-      if (col < size - 1 && canMerge(board[row][col], board[row][col + 1])) {
+      if (col < size - 1 && canMerge(board[row][col], board[row][col + 1], blocked)) {
         return true;
       }
-      if (row < size - 1 && canMerge(board[row][col], board[row + 1][col])) {
+      if (row < size - 1 && canMerge(board[row][col], board[row + 1][col], blocked)) {
         return true;
       }
     }
@@ -162,14 +174,14 @@ function clear(): number[][] {
 }
 
 // update array after slide 
-export function slideLine(line: number[]): { line: number[]; gained: number } {
+export function slideLine(line: number[], blocked: number[] = []): { line: number[]; gained: number } {
   const size = line.length;
   let gained: number = 0;
   // remove all 0
   line = line.filter(x => x !== 0);
   // update after-slide array
   for (let i: number = 0; i < line.length-1; i++){
-    if (canMerge(line[i], line[i + 1])) {
+    if (canMerge(line[i], line[i + 1], blocked)) {
       line[i] *= 2;
       gained += line[i];
       line.splice(i + 1, 1);
@@ -194,9 +206,9 @@ export function boardsEqual(a: Board, b: Board): boolean{
   return a.every((row, i) => row.every((cell, j) => cell === b[i][j]));
 }
 
-// two tiles can merge when they have the same value; empty cells (0) never merge
-export function canMerge(a: number, b: number): boolean{
-  return a !== 0 && a === b;  
+// two tiles can merge when they have the same value; empty cells (0) and blocked tiles never merge
+export function canMerge(a: number, b: number, blocked: number[] = []): boolean{
+  return a !== 0 && a === b && !blocked.includes(a);
 }
 
 // how many turns until the next question. A constant for now so it can be made random later
@@ -213,9 +225,11 @@ function pickRandom(list: number[], random: () => number): number {
 export function makeQuestion(base: number, random: () => number): Question {
   if (random() < SQUARE_ROOT_CHANCE) {
     const power = pickRandom(SQUARE_ROOT_POWERS, random);
-    return { text: `√${base ** power}`, answer: base ** (power / 2) };
+    const tile = base ** power;
+    return { text: `√${tile}`, answer: base ** (power / 2), tile };
   }
 
   const power = pickRandom(QUESTION_POWERS, random);
-  return { text: `${base}^${power}`, answer: base ** power };
+  const tile = base ** power;
+  return { text: `${base}^${power}`, answer: tile, tile };
 }
