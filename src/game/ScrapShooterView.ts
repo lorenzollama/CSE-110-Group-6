@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import type { View } from '../types';
 import type { Scrap } from './ScrapShooterModel';
+import {makeButton} from "../popups/PopupView";
 
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -41,7 +42,7 @@ private healthBar!: Konva.Group;
     this.group.hide();
   }
 
-  build(): void {
+  build(onBack: () => void): void {
     this.inputBox = new Konva.Rect({
       x: WIDTH / 2 - 120,
       y: 520,
@@ -89,6 +90,7 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
     this.drawShip();
     this.group.add(this.inputBox, this.inputText, this.highScoreText, this.healthBar);
+    this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280' ,100));
   }
 
   destroy(): void {
@@ -102,6 +104,7 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
     this.scrapGroups.clear();
     this.group.destroyChildren();
+    document.body.style.cursor = 'default';
   }
 
   // ------------------------------------------------------------- drawing

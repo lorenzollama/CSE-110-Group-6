@@ -63,6 +63,9 @@ export class ScrapShooterModel {
   isOver(): boolean {
     return this.answered >= QUESTIONS_PER_GAME;
   }
+  isLost(): boolean {
+    return this.health === 0;
+  }
 
   typeDigit(digit: string): void {
     if (this.typed.length < MAX_DIGITS) this.typed += digit;
@@ -73,7 +76,7 @@ export class ScrapShooterModel {
   }
 
   submit(): SubmitResult {
-    if (this.typed === '' || this.isOver()) return { type: 'ignored' };
+    if (this.typed === '' || this.isOver() || this.isLost()) return { type: 'ignored' };
     const value = parseInt(this.typed, 10);
     this.typed = '';
     this.answered++;

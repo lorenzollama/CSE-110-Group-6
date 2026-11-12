@@ -5,6 +5,7 @@ import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
+import {LevelsModel, TOTAL_LEVELS} from "../screens/levels/LevelsModel";
 
 /**
  * Scraps sit on screen and the first one in the list is the target. Type its answer
@@ -15,10 +16,12 @@ export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
   private model: ScrapShooterModel | null = null;
   private popups: PopupController;
+  private level = 1;
 
   constructor(
     private screenSwitcher: ScreenSwitcher,
     popupLayer: Konva.Layer,
+    private levels: LevelsModel,
   ) {
     super();
     this.popups = new PopupController(new PopupView(popupLayer));
@@ -34,7 +37,7 @@ export class ScrapShooterController extends ScreenController {
     const model = new ScrapShooterModel();
     this.model = model;
 
-    this.view.build();
+    this.view.build(() => this.screenSwitcher.switchToScreen({ type: "levels" }));
     model.getScraps().forEach(scrap => this.view.addScrap(scrap));
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
@@ -98,9 +101,10 @@ export class ScrapShooterController extends ScreenController {
           correctAnswer: String(question.answer),
           explanation: question.explanation,
         },
-        // If this was the last answer, show the level-complete popup after "Got it".
+        // If this was the last answer, show the level-complete popup after "Got it". and if the player lost all health, show the game-over popup after "Got it".
         () => {
-          if (model.isOver()) this.endGame(model);
+          if (model.isLost()) this.gameOver(model);
+          else if(model.isOver()) this.endGame(model);
         },
       );
       return;
@@ -111,20 +115,47 @@ export class ScrapShooterController extends ScreenController {
 
   private endGame(model: ScrapShooterModel): void {
     window.removeEventListener('keydown', this.onKeyDown);
+    this.levels.completeLevel(this.level);
 
     this.popups.showLevelComplete(
-      { level: 1, score: model.getScore(), accuracy: model.getAccuracy() },
+      { level: this.level, score: model.getScore(), accuracy: model.getAccuracy() },
       {
-        onNextLevel: () => this.restart(),
-        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
+        onNextLevel: () =>{
+          if(this.level < TOTAL_LEVELS) this.startLevel(this.level + 1);
+          else this.screenSwitcher.switchToScreen({ type: 'levels' });
+        },
+        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'levels' }),
       },
     );
-
+    
     submitHighScore(model.getScore())
       .then(({ highScore }) => {
         if (this.model === model) this.view.showHighScore(highScore);
       })
       .catch(err => console.warn('Could not save high score', err));
+  }
+
+  private gameOver(model: ScrapShooterModel): void {
+    window.removeEventListener('keydown', this.onKeyDown);
+
+    this.popups.showGameOver(
+      {  score: model.getScore(), accuracy: model.getAccuracy() },
+      {
+        onTryAgain: () => this.restart(),
+        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'levels' }),
+      },
+    );
+    
+    submitHighScore(model.getScore())
+      .then(({ highScore }) => {
+        if (this.model === model) this.view.showHighScore(highScore);
+      })
+      .catch(err => console.warn('Could not save high score', err));
+  }
+
+  startLevel(level: number): void {
+    this.level = level;
+    this.restart();
   }
 
   private restart(): void {

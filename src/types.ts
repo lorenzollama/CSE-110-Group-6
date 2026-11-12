@@ -14,13 +14,15 @@ export interface View {
  * - "minigame1", "minigame2": the two minigames (src/minigames/)
  * - "result": Results screen with final score
  *   - score: Final score to display on results screen
+ *  - "levels": Levels screen where the player can select a level to play
  */
 export type Screen =
 	| { type: "menu" }
-	| { type: "main game" }
+	| { type: "main game"; level: number }
 	| { type: "minigame1" }
 	| { type: "minigame2" }
-	| { type: "result"; score: number };
+	| { type: "result"; score: number }
+	| { type: "levels" };
 
 export abstract class ScreenController {
 	abstract getView(): View;
