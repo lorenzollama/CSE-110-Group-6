@@ -3,6 +3,7 @@ import { GRID_SIZE } from "./constants.ts";
 import {
   boardsEqual,
   canMerge,
+  convertTile,
   Game,
   makeNewBaseQuestion,
   makeQuestion,
@@ -709,6 +710,37 @@ describe("a game in base 3", () => {
 
     const nine = gameWithBoard(nineBoard(), fakeRandom(0, 0.05), 3).move("left");
     expect(nine.board[0]).toEqual([27, 9, 0, 0]);
+  });
+});
+
+describe("bases and blocked tiles", () => {
+  it("in base 3, 3 3 9 0 becomes 9 9 0 0", () => {
+    expect(slideLine([3, 3, 9, 0], [], 3)).toEqual({ line: [9, 9, 0, 0], gained: 9 });
+  });
+
+  it("with 32 blocked, 32 32 0 0 stays the same", () => {
+    expect(slideLine([32, 32, 0, 0], [32])).toEqual({ line: [32, 32, 0, 0], gained: 0 });
+  });
+
+  it("going from base 2 to base 3 turns 32 into 243", () => {
+    expect(convertTile(32, 2, 3)).toBe(243);
+  });
+
+  it("a wrong answer to √64 blocks 64", () => {
+    const game = startedGame();
+    game.setQuestion(makeQuestion(2, fakeRandom(0.4, 0.99)));
+
+    expect(game.answer(7).blocked).toEqual([64]);
+  });
+
+  it("keeps the exact power going from any base to any other base", () => {
+    for (let oldBase = 2; oldBase <= 9; oldBase++) {
+      for (let newBase = 2; newBase <= 9; newBase++) {
+        for (let power = 1; power <= 12; power++) {
+          expect(convertTile(oldBase ** power, oldBase, newBase)).toBe(newBase ** power);
+        }
+      }
+    }
   });
 });
 
