@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { GRID_SIZE } from "./constants.ts";
 import { boardsEqual, canMerge, Game, reverseRows, slideLine, transpose } from "./model.ts";
 import type { Board, Direction } from "./types.ts";
 
@@ -107,13 +108,12 @@ describe("Game.newGame", () => {
   it("starts with two tiles, a score of 0, and status playing", () => {
     const state = new Game(fakeRandom(0, 0.5)).newGame();
 
+    const board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    board[0][0] = 2;
+    board[0][1] = 2;
+
     expect(state).toEqual({
-      board: [
-        [2, 2, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-      ],
+      board,
       score: 0,
       status: "playing",
       base: 2,
@@ -126,7 +126,7 @@ describe("Game.newGame", () => {
     // 0.99 picks the last empty cell each time
     const state = new Game(fakeRandom(0.99, 0.5)).newGame();
 
-    expect(state.board[3]).toEqual([0, 0, 2, 2]);
+    expect(state.board[GRID_SIZE - 1].slice(-2)).toEqual([2, 2]);
   });
 
   it("clears the board and score from the last game", () => {
@@ -182,6 +182,17 @@ describe("Game.move", () => {
       expect(game.move(direction).board).toEqual(expected);
     });
   }
+
+  it("slides tiles all the way across a new board", () => {
+    const game = new Game(fakeRandom(0, 0.5));
+    game.newGame();
+
+    // the two starting 2s merge at the far right, and the new 2 lands at the far left
+    const state = game.move("right");
+
+    expect(state.board[0][GRID_SIZE - 1]).toBe(4);
+    expect(state.board[0][0]).toBe(2);
+  });
 
   it("adds up the score across moves", () => {
     const game = gameWithBoard([

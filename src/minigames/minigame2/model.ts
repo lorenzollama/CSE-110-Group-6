@@ -42,8 +42,8 @@ export class Game implements GameLogic {
   // add random tile after a successful move
   private addRandomTile(): void{
     const emptyCells: Array<[number, number]> = [];
-    for (let row = 0; row < GRID_SIZE; row++) {
-      for (let col = 0; col < GRID_SIZE; col++) {
+    for (let row = 0; row < this.board.length; row++) {
+      for (let col = 0; col < this.board.length; col++) {
         if (this.board[row][col] === 0) {
           emptyCells.push([row, col]);
         }
@@ -108,15 +108,16 @@ export class Game implements GameLogic {
 
 // the player can still move if there is an empty cell or two neighbors can merge
 function hasMoves(board: Board): boolean{
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
+  const size = board.length;
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
       if (board[row][col] === 0) {
         return true;
       }
-      if (col < GRID_SIZE - 1 && canMerge(board[row][col], board[row][col + 1])) {
+      if (col < size - 1 && canMerge(board[row][col], board[row][col + 1])) {
         return true;
       }
-      if (row < GRID_SIZE - 1 && canMerge(board[row][col], board[row + 1][col])) {
+      if (row < size - 1 && canMerge(board[row][col], board[row + 1][col])) {
         return true;
       }
     }
@@ -130,6 +131,7 @@ function clear(): number[][] {
 
 // update array after slide 
 export function slideLine(line: number[]): { line: number[]; gained: number } {
+  const size = line.length;
   let gained: number = 0;
   // remove all 0
   line = line.filter(x => x !== 0);
@@ -141,7 +143,7 @@ export function slideLine(line: number[]): { line: number[]; gained: number } {
       line.splice(i + 1, 1);
     }
   }
-  while (line.length < GRID_SIZE) line.push(0);
+  while (line.length < size) line.push(0);
 
   return { line, gained };
 }
