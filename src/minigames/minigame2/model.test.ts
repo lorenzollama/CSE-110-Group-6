@@ -116,6 +116,9 @@ describe("Game.newGame", () => {
       ],
       score: 0,
       status: "playing",
+      base: 2,
+      blocked: [],
+      question: null,
     });
   });
 
@@ -223,6 +226,15 @@ describe("Game.move", () => {
     // 0.1 is exactly the chance, so it is not below it and makes a 2
     const two = gameWithBoard(startBoard(), fakeRandom(0, 0.1)).move("left");
     expect(two.board[0]).toEqual([4, 4, 2, 0]);
+  });
+});
+
+describe("Game.answer", () => {
+  it("returns the current state for now", () => {
+    const game = new Game(fakeRandom(0, 0.5));
+    const state = game.newGame();
+
+    expect(game.answer(5)).toEqual(state);
   });
 });
 

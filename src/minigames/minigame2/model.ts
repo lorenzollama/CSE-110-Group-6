@@ -1,7 +1,5 @@
+import { GRID_SIZE } from "./constants.ts";
 import type { Board, Direction, GameLogic, GameState, } from "./types.ts"
-
-// set up constant grid size to be 4x4
-const GRID_SIZE = 4
 
 const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
   left: [],
@@ -15,6 +13,9 @@ const FOUR_TILE_CHANCE = 0.1;
 export class Game implements GameLogic {
   private board: Board = clear();
   private score: number = 0;
+  private base: number = 2;
+  private blocked: number[] = [];
+  private question: string | null = null;
   private random: () => number;
 
   constructor(random: () => number = Math.random) {
@@ -32,6 +33,9 @@ export class Game implements GameLogic {
       board: this.board,
       score: this.score,
       status: hasMoves(this.board) ? "playing" : "over",
+      base: this.base,
+      blocked: this.blocked,
+      question: this.question,
     };
   }
 
@@ -92,6 +96,11 @@ export class Game implements GameLogic {
       this.addRandomTile();
     }
   
+    return this.getState();
+  }
+
+  // take the player's answer. For now it just returns the current state
+  answer(_value: number): GameState {
     return this.getState();
   }
   

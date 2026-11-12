@@ -13,13 +13,16 @@ const STATE_AFTER_MOVE: GameState = {
   ],
   score: 4,
   status: "playing",
+  base: 2,
+  blocked: [],
+  question: null,
 };
 
 // Builds a controller with a fake game and a fake view.
 // vi.fn() makes a fake function that remembers every call made to it,
 // so these tests need no browser, no Konva and no real game logic.
 function setup() {
-  const game = { newGame: vi.fn(), move: vi.fn(() => STATE_AFTER_MOVE) };
+  const game = { newGame: vi.fn(), move: vi.fn(() => STATE_AFTER_MOVE), answer: vi.fn() };
   const view = { draw: vi.fn(), onNewGameClick: vi.fn() };
   const controller = new Minigame2Controller(game, view as unknown as Minigame2View);
   return { game, view, controller };
