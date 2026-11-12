@@ -113,9 +113,9 @@ function fakeRandom(...values: number[]): () => number {
 }
 
 // by default new tiles go in the first empty cell and are always a 2
-function gameWithBoard(board: Board, random = fakeRandom(0, 0.5)): Game {
+function gameWithBoard(board: Board, random = fakeRandom(0, 0.5), base = 2): Game {
   const game = new Game(random);
-  game.setBoard(board);
+  game.setBoard(board, base);
   return game;
 }
 
@@ -682,6 +682,33 @@ describe("changing the base", () => {
     game.answer(9);
 
     expect(game.newGame().base).toBe(2);
+  });
+});
+
+describe("a game in base 3", () => {
+  // returns a new copy each time, so one test can't change another test's board
+  function nineBoard(): Board {
+    return [
+      [9, 9, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ];
+  }
+
+  it("merges two 9s into a 27 and scores 27", () => {
+    const state = gameWithBoard(nineBoard(), fakeRandom(0, 0.5), 3).move("left");
+
+    expect(state.board[0][0]).toBe(27);
+    expect(state.score).toBe(27);
+  });
+
+  it("makes the new tile a 3 or a 9", () => {
+    const three = gameWithBoard(nineBoard(), fakeRandom(0, 0.5), 3).move("left");
+    expect(three.board[0]).toEqual([27, 3, 0, 0]);
+
+    const nine = gameWithBoard(nineBoard(), fakeRandom(0, 0.05), 3).move("left");
+    expect(nine.board[0]).toEqual([27, 9, 0, 0]);
   });
 });
 

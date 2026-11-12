@@ -9,8 +9,8 @@ const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
 }
 // the base every game starts in
 const START_BASE = 2;
-// chance that a new tile is a 4 instead of a 2
-const FOUR_TILE_CHANCE = 0.1;
+// chance that a new tile is the base squared instead of the base
+const BIG_TILE_CHANCE = 0.1;
 // how many moves that change the board come between questions
 const TURNS_BETWEEN_QUESTIONS = 5;
 // chance that a question is a square root instead of a power
@@ -51,8 +51,9 @@ export class Game implements GameLogic {
   }
 
   // setup board to be expected
-  setBoard(b: Board): void{
+  setBoard(b: Board, base: number = START_BASE): void{
     this.board = b;
+    this.base = base;
   }
 
   // setup question to be expected
@@ -87,9 +88,9 @@ export class Game implements GameLogic {
       return;
     }
 
-    // choose a random spot and put 2 or 4 in it
+    // choose a random spot and put the base or the base squared in it
     const [row, col] = emptyCells[Math.floor(this.random() * emptyCells.length)];
-    this.board[row][col] = this.random() < FOUR_TILE_CHANCE ? 4 : 2;
+    this.board[row][col] = this.random() < BIG_TILE_CHANCE ? this.base ** 2 : this.base;
   }
   
   // start new game
@@ -118,7 +119,7 @@ export class Game implements GameLogic {
     // slide line for each row and update score
     let gained = 0;
     board = board.map(row => {
-      const { line, gained: g } = slideLine(row, this.blocked);
+      const { line, gained: g } = slideLine(row, this.blocked, this.base);
       gained += g;
       return line;
     });
@@ -210,7 +211,7 @@ function clear(): number[][] {
 }
 
 // update array after slide 
-export function slideLine(line: number[], blocked: number[] = []): { line: number[]; gained: number } {
+export function slideLine(line: number[], blocked: number[] = [], base: number = START_BASE): { line: number[]; gained: number } {
   const size = line.length;
   let gained: number = 0;
   // remove all 0
@@ -218,7 +219,7 @@ export function slideLine(line: number[], blocked: number[] = []): { line: numbe
   // update after-slide array
   for (let i: number = 0; i < line.length-1; i++){
     if (canMerge(line[i], line[i + 1], blocked)) {
-      line[i] *= 2;
+      line[i] *= base;
       gained += line[i];
       line.splice(i + 1, 1);
     }
