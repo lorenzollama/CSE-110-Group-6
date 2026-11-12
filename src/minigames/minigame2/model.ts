@@ -17,6 +17,12 @@ const SQUARE_ROOT_CHANCE = 0.5;
 const QUESTION_POWERS = [2, 3, 4, 5, 6];
 // only even powers, so the answer is a whole number (64 is 2^6, so √64 is 2^3)
 const SQUARE_ROOT_POWERS = [2, 4, 6];
+// how many questions come before the next one brings a new base
+export const QUESTIONS_BEFORE_NEW_BASE = 3;
+// the bases the board can change to
+const BASES = [2, 3, 4, 5, 6, 7, 8, 9];
+// a new base question only uses low powers (squared or cubed)
+const NEW_BASE_POWERS = [2, 3];
 
 // a question for the player. The front end only gets the text
 export interface Question {
@@ -24,6 +30,8 @@ export interface Question {
   answer: number;
   // the tile that a wrong answer blocks
   tile: number;
+  // the base to change to after this question. Only new base questions have one
+  newBase?: number;
 }
 
 export class Game implements GameLogic {
@@ -33,6 +41,7 @@ export class Game implements GameLogic {
   private blocked: number[] = [];
   private question: Question | null = null;
   private turnsLeft: number = turnsUntilQuestion();
+  private questionsLeft: number = QUESTIONS_BEFORE_NEW_BASE;
   private random: () => number;
 
   constructor(random: () => number = Math.random) {
@@ -88,6 +97,7 @@ export class Game implements GameLogic {
     this.blocked = [];
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
+    this.questionsLeft = QUESTIONS_BEFORE_NEW_BASE;
     this.addRandomTile();
     this.addRandomTile();
     return this.getState();
@@ -144,7 +154,18 @@ export class Game implements GameLogic {
   private countTurn(): void {
     this.turnsLeft--;
     if (this.turnsLeft === 0) {
+      this.askQuestion();
+    }
+  }
+
+  // every few questions the next one brings a new base
+  private askQuestion(): void {
+    if (this.questionsLeft === 0) {
+      this.question = makeNewBaseQuestion(this.base, this.random);
+      this.questionsLeft = QUESTIONS_BEFORE_NEW_BASE;
+    } else {
       this.question = makeQuestion(this.base, this.random);
+      this.questionsLeft--;
     }
   }
   
@@ -232,4 +253,12 @@ export function makeQuestion(base: number, random: () => number): Question {
   const power = pickRandom(QUESTION_POWERS, random);
   const tile = base ** power;
   return { text: `${base}^${power}`, answer: tile, tile };
+}
+
+// make a question about a low power of a new random base that isn't the current one
+export function makeNewBaseQuestion(base: number, random: () => number): Question {
+  const newBase = pickRandom(BASES.filter(b => b !== base), random);
+  const power = pickRandom(NEW_BASE_POWERS, random);
+  const tile = newBase ** power;
+  return { text: `${newBase}^${power}`, answer: tile, tile, newBase };
 }
