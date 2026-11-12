@@ -22,6 +22,8 @@ const SQUARE_ROOT_POWERS = [2, 4, 6];
 export interface Question {
   text: string;
   answer: number;
+  // the tile that a wrong answer blocks
+  tile: number;
 }
 
 export class Game implements GameLogic {
@@ -40,6 +42,11 @@ export class Game implements GameLogic {
   // setup board to be expected
   setBoard(b: Board): void{
     this.board = b;
+  }
+
+  // setup question to be expected
+  setQuestion(q: Question): void {
+    this.question = q;
   }
 
   // get current state
@@ -78,6 +85,7 @@ export class Game implements GameLogic {
   newGame(): GameState {
     this.board = clear();
     this.score = 0;
+    this.blocked = [];
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
     this.addRandomTile();
@@ -117,10 +125,14 @@ export class Game implements GameLogic {
     return this.getState();
   }
 
-  // take the player's answer, clear the question and start the count over
-  answer(_value: number): GameState {
+  // check the player's answer, clear the question and start the count over
+  answer(value: number): GameState {
     if (this.question === null) {
       return this.getState();
+    }
+
+    if (value !== this.question.answer) {
+      this.blocked.push(this.question.tile);
     }
 
     this.question = null;
@@ -213,9 +225,11 @@ function pickRandom(list: number[], random: () => number): number {
 export function makeQuestion(base: number, random: () => number): Question {
   if (random() < SQUARE_ROOT_CHANCE) {
     const power = pickRandom(SQUARE_ROOT_POWERS, random);
-    return { text: `√${base ** power}`, answer: base ** (power / 2) };
+    const tile = base ** power;
+    return { text: `√${tile}`, answer: base ** (power / 2), tile };
   }
 
   const power = pickRandom(QUESTION_POWERS, random);
-  return { text: `${base}^${power}`, answer: base ** power };
+  const tile = base ** power;
+  return { text: `${base}^${power}`, answer: tile, tile };
 }

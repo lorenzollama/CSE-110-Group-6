@@ -3,6 +3,9 @@ import { GRID_SIZE } from "./constants.ts";
 import { boardsEqual, canMerge, Game, makeQuestion, reverseRows, slideLine, transpose, turnsUntilQuestion } from "./model.ts";
 import type { Board, Direction, GameState } from "./types.ts";
 
+// Example data: a question to give the game with setQuestion
+const POWER_QUESTION = { text: "2^5", answer: 32, tile: 32 };
+
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
   [[2, 2, 2, 2], [4, 4, 0, 0], 8],
@@ -454,3 +457,42 @@ describe("makeQuestion", () => {
     }
   });
 });
+
+describe("wrong answers", () => {
+  it("blocks the tile when the answer is wrong", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(30).blocked).toEqual([32]);
+  });
+
+  it("blocks nothing when the answer is right", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(32).blocked).toEqual([]);
+  });
+
+  it("keeps the tiles from earlier wrong answers", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(30);
+    game.setQuestion({ text: "2^3", answer: 8, tile: 8 });
+
+    expect(game.answer(6).blocked).toEqual([32, 8]);
+  });
+
+  it("picks the answer as the tile for a power and the number under the root for a square root", () => {
+    expect(makeQuestion(2, fakeRandom(0.5, 0.6)).tile).toBe(32); // 2^5
+    expect(makeQuestion(2, fakeRandom(0.4, 0.99)).tile).toBe(64); // √64 has the answer 8
+  });
+
+  it("clears the blocked tiles on a new game", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(30);
+
+    expect(game.newGame().blocked).toEqual([]);
+  });
+});
+
