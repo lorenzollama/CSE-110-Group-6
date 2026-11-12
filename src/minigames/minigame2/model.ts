@@ -7,6 +7,8 @@ const TO_LEFT: Record<Direction, Array<(board: Board)=> Board>> = {
   up: [transpose],
   down: [transpose, reverseRows],
 }
+// the base every game starts in
+const START_BASE = 2;
 // chance that a new tile is a 4 instead of a 2
 const FOUR_TILE_CHANCE = 0.1;
 // how many moves that change the board come between questions
@@ -37,7 +39,7 @@ export interface Question {
 export class Game implements GameLogic {
   private board: Board = clear();
   private score: number = 0;
-  private base: number = 2;
+  private base: number = START_BASE;
   private blocked: number[] = [];
   private question: Question | null = null;
   private turnsLeft: number = turnsUntilQuestion();
@@ -94,6 +96,7 @@ export class Game implements GameLogic {
   newGame(): GameState {
     this.board = clear();
     this.score = 0;
+    this.base = START_BASE;
     this.blocked = [];
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
@@ -141,6 +144,11 @@ export class Game implements GameLogic {
       return this.getState();
     }
 
+    if (this.question.newBase !== undefined) {
+      this.changeBase(this.question.newBase);
+    }
+
+    // this comes after changing the base, so a wrong answer only blocks the new tile
     if (value !== this.question.answer) {
       this.blocked.push(this.question.tile);
     }
@@ -148,6 +156,13 @@ export class Game implements GameLogic {
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
     return this.getState();
+  }
+
+  // change every tile to the new base and clear the old blocked tiles
+  private changeBase(newBase: number): void {
+    this.board = this.board.map(row => row.map(tile => convertTile(tile, this.base, newBase)));
+    this.base = newBase;
+    this.blocked = [];
   }
 
   // count a move that changed the board and ask a question when it is time
@@ -261,4 +276,15 @@ export function makeNewBaseQuestion(base: number, random: () => number): Questio
   const power = pickRandom(NEW_BASE_POWERS, random);
   const tile = newBase ** power;
   return { text: `${newBase}^${power}`, answer: tile, tile, newBase };
+}
+
+// keep the tile's power in the new base (32 is 2^5, so in base 3 it becomes 3^5 = 243)
+export function convertTile(tile: number, oldBase: number, newBase: number): number {
+  if (tile === 0) {
+    return 0;
+  }
+
+  // round it because the division can come out a tiny bit off, like 3.0000000000000004
+  const power = Math.round(Math.log(tile) / Math.log(oldBase));
+  return newBase ** power;
 }

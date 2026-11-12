@@ -14,8 +14,9 @@ import {
 } from "./model.ts";
 import type { Board, Direction, GameState } from "./types.ts";
 
-// Example data: a question to give the game with setQuestion
+// Example data: questions to give the game with setQuestion
 const POWER_QUESTION = { text: "2^5", answer: 32, tile: 32 };
+const NEW_BASE_QUESTION = { text: "3^2", answer: 9, tile: 9, newBase: 3 };
 
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
@@ -609,6 +610,78 @@ describe("new base questions", () => {
       expect(playTurns(game, turnsUntilQuestion()).question).toBe("√16");
       game.answer(4);
     }
+  });
+});
+
+describe("changing the base", () => {
+  // a game with the new base question waiting for an answer
+  function gameWithNewBaseQuestion(): Game {
+    const game = gameWithBoard([
+      [2, 4, 8, 0],
+      [16, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    game.setQuestion(NEW_BASE_QUESTION);
+    return game;
+  }
+
+  it("changes every tile to the new base and keeps its power", () => {
+    const state = gameWithNewBaseQuestion().answer(9);
+
+    expect(state.base).toBe(3);
+    expect(state.board).toEqual([
+      [3, 9, 27, 0],
+      [81, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+  });
+
+  it("changes the base after a wrong answer too", () => {
+    expect(gameWithNewBaseQuestion().answer(8).base).toBe(3);
+  });
+
+  it("keeps the base after a question that isn't about a new base", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(32).base).toBe(2);
+  });
+
+  it("clears the old blocked tiles", () => {
+    const game = startedGame();
+    blockTile(game, 32);
+    game.setQuestion(NEW_BASE_QUESTION);
+
+    expect(game.answer(9).blocked).toEqual([]);
+  });
+
+  it("only blocks the new tile on a wrong answer", () => {
+    const game = startedGame();
+    blockTile(game, 32);
+    game.setQuestion(NEW_BASE_QUESTION);
+
+    expect(game.answer(8).blocked).toEqual([9]);
+  });
+
+  it("starts the question count over", () => {
+    const game = startedGame();
+
+    // the last of these questions brings the new base
+    for (let question = 0; question <= QUESTIONS_BEFORE_NEW_BASE; question++) {
+      playTurns(game, turnsUntilQuestion());
+      game.answer(0);
+    }
+
+    expect(playTurns(game, turnsUntilQuestion()).question).toBe("√81");
+  });
+
+  it("goes back to the first base on a new game", () => {
+    const game = gameWithNewBaseQuestion();
+    game.answer(9);
+
+    expect(game.newGame().base).toBe(2);
   });
 });
 
