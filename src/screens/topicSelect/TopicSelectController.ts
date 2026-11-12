@@ -1,6 +1,6 @@
 /**
  * Topic select CONTROLLER: connects the TopicSelectModel and TopicSelectView.
- * Picking a topic saves it in the model and opens the main game;
+ * Picking a topic saves it in the model and opens that topic's levels;
  * Back returns to the start screen.
  */
 import { ScreenController } from "../../types";
@@ -25,7 +25,7 @@ export class TopicSelectController extends ScreenController {
 
   private handleTopicClick(topic: Topic): void {
     this.model.selectTopic(topic);
-    this.screenSwitcher.switchToScreen({ type: "main game", topic });
+    this.screenSwitcher.switchToScreen({ type: "levels", topic });
   }
 
   getSelectedTopic(): Topic | null {

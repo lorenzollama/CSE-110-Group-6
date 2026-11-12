@@ -1,5 +1,5 @@
-import { PopupModel, toWholePercent, type LevelCompleteInfo, type WrongAnswerInfo } from "./PopupModel";
-import type { LevelCompleteActions, PopupView } from "./PopupView";
+import { PopupModel, toWholePercent, type LevelCompleteInfo, type WrongAnswerInfo, type GameOverInfo } from "./PopupModel";
+import type { LevelCompleteActions, PopupView, GameOverActions } from "./PopupView";
 
 /**
  * Popup CONTROLLER: what the game calls to open a popup.
@@ -40,7 +40,17 @@ export class PopupController {
       },
     );
   }
-
+  showGameOver(info: GameOverInfo, actions: GameOverActions): void {
+      this.close(); // only one popup at a time
+      this.model.open("gameOver");
+      this.view.showGameOver(
+        { ...info, accuracy: toWholePercent(info.accuracy) },
+        {
+          onTryAgain: this.closeThen(actions.onTryAgain),
+          onMenu: this.closeThen(actions.onMenu),
+        },
+      );
+    }
   /** Closes the open popup, if there is one. */
   close(): void {
     if (!this.model.isOpen()) return;

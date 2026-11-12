@@ -27,11 +27,11 @@ describe('ScrapShooterModel scoring', () => {
 
   it(`ends after ${QUESTIONS_PER_GAME} answers, right or wrong`, () => {
     const model = new ScrapShooterModel();
-    for (let i = 0; i < QUESTIONS_PER_GAME - 1; i++) answerWrong(model);
+    for (let i = 0; i < QUESTIONS_PER_GAME - 1; i++) answerRight(model);
     expect(model.isOver()).toBe(false);
     answerRight(model);
     expect(model.isOver()).toBe(true);
-    expect(model.getScore()).toBe(1);
+    expect(model.getScore()).toBe(10);
   });
 
   it('has 0 accuracy before any answers', () => {
@@ -143,6 +143,21 @@ describe('ScrapShooterModel health', () => {
   it('stops at 0 after repeated wrong answers', () => {
     const model = new ScrapShooterModel();
     for (let i = 0; i < MAX_HEALTH + 1; i++) answerWrong(model);
+    expect(model.getHealth()).toBe(0);
+  });
+
+  it('is lost when health reaches 0', () => {
+    const model = new ScrapShooterModel();
+    for (let i = 0; i < MAX_HEALTH - 1; i++) answerWrong(model);
+    expect(model.isLost()).toBe(false);
+    answerWrong(model);
+    expect(model.isLost()).toBe(true);
+  });
+
+   it('ignores answers after losing', () => {
+    const model = new ScrapShooterModel();
+    for (let i = 0; i < MAX_HEALTH; i++) answerWrong(model);
+    expect(answerRight(model)).toEqual({ type: 'ignored' });
     expect(model.getHealth()).toBe(0);
   });
 });

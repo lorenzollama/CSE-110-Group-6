@@ -65,6 +65,9 @@ export class ScrapShooterModel {
   isOver(): boolean {
     return this.answered >= QUESTIONS_PER_GAME;
   }
+  isLost(): boolean {
+    return this.health === 0;
+  }
 
   /** Adds a digit or "/" (for fractions) to the answer being typed. */
   typeKey(key: string): void {
@@ -77,7 +80,7 @@ export class ScrapShooterModel {
   }
 
   submit(): SubmitResult {
-    if (this.typed === '' || this.isOver()) return { type: 'ignored' };
+    if (this.typed === '' || this.isOver() || this.isLost()) return { type: 'ignored' };
     const value = this.typed;
     this.typed = '';
     this.answered++;

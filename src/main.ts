@@ -7,6 +7,8 @@ import { TopicSelectController } from "./screens/topicSelect/TopicSelectControll
 import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
 import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
+import { LevelsController } from "./screens/levels/LevelsController.ts";
+import { createLevelsByTopic } from "./screens/levels/LevelsModel.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -22,6 +24,8 @@ class App implements ScreenSwitcher {
   private minigame2: Minigame2Controller;
   private startController: StartController;
   private topicSelect: TopicSelectController;
+  private levelsController: LevelsController;
+  private levelsByTopic = createLevelsByTopic();
 
   constructor(container: string) {
     this.stage = new Konva.Stage({
@@ -36,7 +40,7 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController(this, this.popupLayer);
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer, this.levelsByTopic);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
 
@@ -65,6 +69,8 @@ class App implements ScreenSwitcher {
     this.screenLayer.add(this.startController.getView().getGroup());
     this.topicSelect = new TopicSelectController(this);
     this.screenLayer.add(this.topicSelect.getView().getGroup());
+    this.levelsController = new LevelsController(this, this.levelsByTopic);
+    this.screenLayer.add(this.levelsController.getView().getGroup());
     this.centerScreens();
     this.screenLayer.draw();
 
@@ -82,6 +88,7 @@ class App implements ScreenSwitcher {
     this.screenLayer.hide();
     this.startController.hide();
     this.topicSelect.hide();
+    this.levelsController.hide();
     this.minigame1.hide();
 
     switch (screen.type) {
@@ -95,10 +102,15 @@ class App implements ScreenSwitcher {
         this.topicSelect.show();
         break;
 
+      case "levels":
+        this.screenLayer.show();
+        this.levelsController.setTopic(screen.topic);
+        this.levelsController.show();
+        break;
+
       case "main game":
         this.gameLayer.show();
-        this.scrapShooter.setTopic(screen.topic);
-        this.scrapShooter.show();
+        this.scrapShooter.startLevel(screen.topic, screen.level);
         break;
 
       case "minigame1":
