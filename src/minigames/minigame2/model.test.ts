@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { GRID_SIZE } from "./constants.ts";
-import { boardsEqual, canMerge, Game, reverseRows, slideLine, transpose } from "./model.ts";
-import type { Board, Direction } from "./types.ts";
+import { boardsEqual, canMerge, Game, makeQuestion, reverseRows, slideLine, transpose, turnsUntilQuestion } from "./model.ts";
+import type { Board, Direction, GameState } from "./types.ts";
 
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
@@ -102,6 +102,21 @@ function gameWithBoard(board: Board, random = fakeRandom(0, 0.5)): Game {
   const game = new Game(random);
   game.setBoard(board);
   return game;
+}
+
+// a game that has started. Each move right changes its board, because the new tile lands at the far left
+function startedGame(): Game {
+  const game = new Game(fakeRandom(0, 0.5));
+  game.newGame();
+  return game;
+}
+
+// plays the moves and returns the state after the last one
+function playTurns(game: Game, turns: number): GameState {
+  for (let turn = 1; turn < turns; turn++) {
+    game.move("right");
+  }
+  return game.move("right");
 }
 
 describe("Game.newGame", () => {
@@ -240,12 +255,56 @@ describe("Game.move", () => {
   });
 });
 
-describe("Game.answer", () => {
-  it("returns the current state for now", () => {
-    const game = new Game(fakeRandom(0, 0.5));
-    const state = game.newGame();
+describe("Game questions", () => {
+  it("asks a question after the set number of moves and not before", () => {
+    expect(playTurns(startedGame(), turnsUntilQuestion() - 1).question).toBeNull();
+    expect(playTurns(startedGame(), turnsUntilQuestion()).question).not.toBeNull();
+  });
+
+  it("does not count moves that change nothing", () => {
+    const game = gameWithBoard([
+      [2, 4, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+
+    for (let turn = 0; turn < turnsUntilQuestion(); turn++) {
+      expect(game.move("left").question).toBeNull();
+    }
+  });
+
+  it("clears the question and starts the count over after an answer", () => {
+    const game = startedGame();
+    playTurns(game, turnsUntilQuestion());
+
+    expect(game.answer(5).question).toBeNull();
+
+    expect(playTurns(game, turnsUntilQuestion() - 1).question).toBeNull();
+    expect(game.move("right").question).not.toBeNull();
+  });
+
+  it("does nothing when an answer comes with no question", () => {
+    const game = startedGame();
+    const state = playTurns(game, turnsUntilQuestion() - 1);
 
     expect(game.answer(5)).toEqual(state);
+    expect(game.move("right").question).not.toBeNull(); // the count did not start over
+  });
+
+  it("clears the question on a new game", () => {
+    const game = startedGame();
+    playTurns(game, turnsUntilQuestion());
+
+    expect(game.newGame().question).toBeNull();
+  });
+
+  it("starts the count over on a new game", () => {
+    const game = startedGame();
+    playTurns(game, turnsUntilQuestion() - 1);
+    game.newGame();
+
+    expect(playTurns(game, turnsUntilQuestion() - 1).question).toBeNull();
   });
 });
 
@@ -365,5 +424,33 @@ describe("Game status", () => {
 
     expect(state.board).toEqual(board);
     expect(state.status).toBe("playing");
+  });
+});
+
+describe("makeQuestion", () => {
+  // the first random number picks the kind (below 0.5 = a square root), the second picks the power
+  it.each([
+    [2, 0.5, 0.6, "2^5", 32],
+    [3, 0.5, 0.4, "3^4", 81],
+    [2, 0.4, 0.99, "√64", 8],
+    [3, 0.4, 0.5, "√81", 9],
+  ])("in base %i with %d and %d asks %s", (base, kind, power, text, answer) => {
+    expect(makeQuestion(base, fakeRandom(kind, power))).toMatchObject({ text, answer });
+  });
+
+  it("uses the lowest and highest powers", () => {
+    expect(makeQuestion(2, fakeRandom(0.5, 0)).text).toBe("2^2");
+    expect(makeQuestion(2, fakeRandom(0.5, 0.99)).text).toBe("2^6");
+    expect(makeQuestion(2, fakeRandom(0, 0)).text).toBe("√4");
+  });
+
+  it("always gives a square root with a whole number answer", () => {
+    for (let base = 2; base <= 9; base++) {
+      for (const power of [0, 0.5, 0.99]) {
+        const { answer } = makeQuestion(base, fakeRandom(0, power));
+
+        expect(Number.isInteger(answer)).toBe(true);
+      }
+    }
   });
 });
