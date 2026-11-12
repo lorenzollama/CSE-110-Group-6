@@ -122,6 +122,12 @@ function playTurns(game: Game, turns: number): GameState {
   return game.move("right");
 }
 
+// blocks the tile the way the game does, with a wrong answer
+function blockTile(game: Game, tile: number): GameState {
+  game.setQuestion({ text: "a question", answer: tile, tile });
+  return game.answer(0);
+}
+
 describe("Game.newGame", () => {
   it("starts with two tiles, a score of 0, and status playing", () => {
     const state = new Game(fakeRandom(0, 0.5)).newGame();
@@ -493,6 +499,62 @@ describe("wrong answers", () => {
     game.answer(30);
 
     expect(game.newGame().blocked).toEqual([]);
+  });
+});
+
+describe("blocked tiles", () => {
+  it("can't merge, but other tiles can", () => {
+    expect(canMerge(32, 32, [32])).toBe(false);
+    expect(canMerge(16, 16, [32])).toBe(true);
+  });
+
+  it("still slide on a move", () => {
+    const game = gameWithBoard([
+      [0, 8, 8, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    blockTile(game, 8);
+
+    const state = game.move("left");
+
+    expect(state.board[0]).toEqual([8, 8, 2, 0]);
+    expect(state.score).toBe(0);
+  });
+
+  it("can still be made by merging two smaller tiles", () => {
+    const game = gameWithBoard([
+      [4, 4, 8, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    blockTile(game, 8);
+
+    expect(game.move("left").board[0]).toEqual([8, 8, 2, 0]);
+  });
+
+  it("end the game when the only merge left is blocked", () => {
+    const game = gameWithBoard([
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 8, 8],
+    ]);
+
+    expect(blockTile(game, 8).status).toBe("over");
+  });
+
+  it("keep the game going when a different tile is blocked", () => {
+    const game = gameWithBoard([
+      [2, 4, 2, 4],
+      [4, 2, 4, 2],
+      [2, 4, 2, 4],
+      [4, 2, 8, 8],
+    ]);
+
+    expect(blockTile(game, 16).status).toBe("playing");
   });
 });
 
