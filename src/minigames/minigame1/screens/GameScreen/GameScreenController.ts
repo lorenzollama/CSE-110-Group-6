@@ -15,7 +15,6 @@ export class GameScreenController extends ScreenController {
 	private currentSequence: Coordinates[] = [];
 	private gameGeneration = 0;
 	private gameOver = false;
-	private inputEnabled = false;
 	private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
@@ -66,7 +65,6 @@ export class GameScreenController extends ScreenController {
 				}
 			}
 			else if (result === "complete") {
-				this.inputEnabled = false;
 				this.model.incrementScore();
 				this.view.updateScore(this.model.getScore());
 				const advanced = this.model.advanceRound(
@@ -85,7 +83,6 @@ export class GameScreenController extends ScreenController {
 		this.gameGeneration++;
 		this.clearPendingTimers();
 		this.gameOver = false;
-		this.inputEnabled = false;
 
 		this.model.reset();
 
@@ -107,7 +104,6 @@ export class GameScreenController extends ScreenController {
 				return;
 			}
 			this.model.startPlayerTurn(sequence);
-			this.inputEnabled = true;
 			this.view.updateStatus("Your turn! Repeat the sequence.");
 		});
 	}

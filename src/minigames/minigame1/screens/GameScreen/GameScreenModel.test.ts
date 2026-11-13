@@ -332,7 +332,7 @@ describe("GameScreenModel completed-round score", () => {
                 expect(model.getRound()).toBe(2);
         });
 
-        it("reports zero completed rounds when the player loses in round one (test #20)", () => {
+        it("reports zero completed rounds when the player loses in round one ( #20)", () => {
                 const model = new GameScreenModel();
                 model.reset();
 
