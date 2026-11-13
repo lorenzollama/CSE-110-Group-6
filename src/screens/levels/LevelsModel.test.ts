@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import{LevelsModel, TOTAL_LEVELS} from './LevelsModel';
+import{createLevelsByTopic, LevelsModel, TOTAL_LEVELS} from './LevelsModel';
 
 describe('LevelModel', () => {
   it('only level 1 is unlocked at the start', () => {
@@ -39,4 +39,22 @@ describe('LevelModel', () => {
     
   });
 
+});
+
+describe('createLevelsByTopic', () => {
+  it('starts every topic at level 1', () => {
+    const levels = createLevelsByTopic();
+    expect(levels.multiplication.getUnlockedLevels()).toBe(1);
+    expect(levels.division.getUnlockedLevels()).toBe(1);
+    expect(levels.simplification.getUnlockedLevels()).toBe(1);
+  });
+
+  it('unlocks levels for one topic without affecting the others', () => {
+    const levels = createLevelsByTopic();
+    levels.division.completeLevel(1);
+    levels.division.completeLevel(2);
+    expect(levels.division.getUnlockedLevels()).toBe(3);
+    expect(levels.multiplication.getUnlockedLevels()).toBe(1);
+    expect(levels.simplification.getUnlockedLevels()).toBe(1);
+  });
 });

@@ -2,10 +2,10 @@ import type Konva from 'konva';
 import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
-import { ScreenController, type ScreenSwitcher } from '../types';
+import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
-import {LevelsModel, TOTAL_LEVELS} from "../screens/levels/LevelsModel";
+import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
 
 /**
  * Scraps sit on screen and the first one in the list is the target. Type its answer
@@ -16,12 +16,13 @@ export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
   private model: ScrapShooterModel | null = null;
   private popups: PopupController;
+  private topic: Topic = 'multiplication';
   private level = 1;
 
   constructor(
     private screenSwitcher: ScreenSwitcher,
     popupLayer: Konva.Layer,
-    private levels: LevelsModel,
+    private levelsByTopic: LevelsByTopic,
   ) {
     super();
     this.popups = new PopupController(new PopupView(popupLayer));
@@ -34,10 +35,10 @@ export class ScrapShooterController extends ScreenController {
   show(): void {
     if (this.model) return;
     this.view.show();
-    const model = new ScrapShooterModel();
+    const model = new ScrapShooterModel(this.topic);
     this.model = model;
 
-    this.view.build(() => this.screenSwitcher.switchToScreen({ type: "levels" }));
+    this.view.build(() => this.backToLevels());
     model.getScraps().forEach(scrap => this.view.addScrap(scrap));
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
@@ -66,9 +67,9 @@ export class ScrapShooterController extends ScreenController {
     if (!this.model || this.popups.isOpen()) return; // typing pauses while a popup is open
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (/^[0-9]$/.test(e.key)) {
-      e.preventDefault();
-      this.model.typeDigit(e.key);
+    if (/^[0-9/]$/.test(e.key)) {
+      e.preventDefault(); // also stops "/" from opening Firefox's quick find
+      this.model.typeKey(e.key);
       this.view.showTyped(this.model.getTyped());
     } else if (e.key === 'Backspace') {
       e.preventDefault();
@@ -97,8 +98,8 @@ export class ScrapShooterController extends ScreenController {
       this.popups.showWrongAnswer(
         {
           question: question.prompt,
-          playerAnswer: String(result.answer),
-          correctAnswer: String(question.answer),
+          playerAnswer: result.answer,
+          correctAnswer: question.answer,
           explanation: question.explanation,
         },
         // If this was the last answer, show the level-complete popup after "Got it". and if the player lost all health, show the game-over popup after "Got it".
@@ -115,16 +116,16 @@ export class ScrapShooterController extends ScreenController {
 
   private endGame(model: ScrapShooterModel): void {
     window.removeEventListener('keydown', this.onKeyDown);
-    this.levels.completeLevel(this.level);
+    this.levelsByTopic[this.topic].completeLevel(this.level);
 
     this.popups.showLevelComplete(
       { level: this.level, score: model.getScore(), accuracy: model.getAccuracy() },
       {
         onNextLevel: () =>{
-          if(this.level < TOTAL_LEVELS) this.startLevel(this.level + 1);
-          else this.screenSwitcher.switchToScreen({ type: 'levels' });
+          if(this.level < TOTAL_LEVELS) this.startLevel(this.topic, this.level + 1);
+          else this.backToLevels();
         },
-        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'levels' }),
+        onMenu: () => this.backToLevels(),
       },
     );
     
@@ -142,7 +143,7 @@ export class ScrapShooterController extends ScreenController {
       {  score: model.getScore(), accuracy: model.getAccuracy() },
       {
         onTryAgain: () => this.restart(),
-        onMenu: () => this.screenSwitcher.switchToScreen({ type: 'levels' }),
+        onMenu: () => this.backToLevels(),
       },
     );
     
@@ -153,9 +154,16 @@ export class ScrapShooterController extends ScreenController {
       .catch(err => console.warn('Could not save high score', err));
   }
 
-  startLevel(level: number): void {
+  /** Starts a fresh game of the given topic and level. */
+  startLevel(topic: Topic, level: number): void {
+    this.topic = topic;
     this.level = level;
     this.restart();
+  }
+
+  /** Goes back to the level map of the topic being played. */
+  private backToLevels(): void {
+    this.screenSwitcher.switchToScreen({ type: 'levels', topic: this.topic });
   }
 
   private restart(): void {

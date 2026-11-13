@@ -10,19 +10,27 @@ export interface View {
  * Screen types for navigation
  *
  * - "menu": Main menu screen
+ * - "topic select": pick a math topic before the main game
+ * - "levels": the level map for one topic, where the player picks a level to play
+ *   - topic: whose levels to show (each topic unlocks its levels separately)
  * - "main game": the main game (Scrap Shooter)
+ *   - topic: which kind of math questions it asks
+ *   - level: which level of that topic is being played
  * - "minigame1", "minigame2": the two minigames (src/minigames/)
  * - "result": Results screen with final score
  *   - score: Final score to display on results screen
- *  - "levels": Levels screen where the player can select a level to play
  */
 export type Screen =
 	| { type: "menu" }
-	| { type: "main game"; level: number }
+	| { type: "topic select" }
+	| { type: "levels"; topic: Topic }
+	| { type: "main game"; topic: Topic; level: number }
 	| { type: "minigame1" }
 	| { type: "minigame2" }
-	| { type: "result"; score: number }
-	| { type: "levels" };
+	| { type: "result"; score: number };
+
+/** The math topics the player can choose on the topic select screen. */
+export type Topic = "multiplication" | "division" | "simplification";
 
 export abstract class ScreenController {
 	abstract getView(): View;

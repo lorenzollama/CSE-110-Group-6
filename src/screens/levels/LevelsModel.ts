@@ -1,3 +1,5 @@
+import type { Topic } from "../../types";
+
 export const TOTAL_LEVELS = 10;
 
 export class LevelsModel {
@@ -13,4 +15,15 @@ export class LevelsModel {
             this.unlockedLevels++;
         }
     }
+}
+
+/** Level progress for each topic. Each topic unlocks its levels separately. */
+export type LevelsByTopic = Record<Topic, LevelsModel>;
+
+export function createLevelsByTopic(): LevelsByTopic {
+    return {
+        multiplication: new LevelsModel(),
+        division: new LevelsModel(),
+        simplification: new LevelsModel(),
+    };
 }

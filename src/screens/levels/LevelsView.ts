@@ -7,10 +7,11 @@ export class LevelsView implements View {
     private group = new Konva.Group({visible: false});
     private levelButtons = new Konva.Group();
     private onLevelClick: (level: number) => void;
+    private title: Konva.Text;
 
     constructor(onLevelClick: (level: number) => void, onBack:()=> void) {
         this.onLevelClick = onLevelClick;
-        const title = new Konva.Text({
+        const title = this.title = new Konva.Text({
                     x: STAGE_WIDTH / 2,
                     y: 60,
                     text: "Levels",
@@ -29,6 +30,12 @@ export class LevelsView implements View {
 
 
         
+    }
+
+    /** Changes the heading, e.g. "Division Levels". */
+    setTitle(text: string): void {
+        this.title.text(text);
+        this.title.offsetX(this.title.width() / 2);
     }
 
     showLevels(totalLevels: number, unlockedLevels: number): void {
