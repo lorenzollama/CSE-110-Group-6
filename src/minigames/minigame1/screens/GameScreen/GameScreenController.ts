@@ -57,6 +57,8 @@ export class GameScreenController extends ScreenController {
 				}
 			}
 			else if (result === "complete") {
+				this.model.incrementScore();
+				this.view.updateScore(this.model.getScore());
 				const advanced = this.model.advanceRound(
 					this.getRandomCoordinates()
 				);
