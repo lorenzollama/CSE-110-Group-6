@@ -310,3 +310,41 @@ describe("GameScreenModel lives and retry logic", () => {
                 expect(model.getLives()).toBe(livesAfterFirstMistake);
         });
 });
+
+// user story 5
+describe("GameScreenModel completed-round score", () => {
+        it("records the highest completed round as the final score (test #19)", () => {
+                const model = new GameScreenModel();
+                model.reset();
+
+                const roundOne = { row: 0, col: 0 };
+                model.startPlayerTurn([roundOne]);
+                expect(model.checkSelection(roundOne)).toBe("complete");
+                model.incrementScore();
+                expect(model.advanceRound({ row: 1, col: 1 })).toBe(true);
+
+                const roundTwo = model.getSequence();
+                model.startPlayerTurn(roundTwo);
+                expect(model.checkSelection(roundTwo[0]!)).toBe("correct");
+                expect(model.checkSelection(roundTwo[1]!)).toBe("complete");
+                model.incrementScore();
+                expect(model.getScore()).toBe(2);
+                expect(model.getRound()).toBe(2);
+        });
+
+        it("reports zero completed rounds when the player loses in round one (test #20)", () => {
+                const model = new GameScreenModel();
+                model.reset();
+
+                model.startPlayerTurn([{ row: 2, col: 2 }]);
+                expect(model.getRound()).toBe(1);
+                expect(model.getScore()).toBe(0);
+
+                expect(model.checkSelection({ row: 0, col: 0 })).toBe("incorrect");
+                model.decrementLives();
+
+                expect(model.getLives()).toBeGreaterThanOrEqual(0);
+                expect(model.getScore()).toBe(0);
+                expect(model.getRound()).toBe(1);
+        });
+});
