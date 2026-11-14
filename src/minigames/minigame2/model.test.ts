@@ -1,10 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { GRID_SIZE } from "./constants.ts";
-import { boardsEqual, canMerge, Game, makeQuestion, reverseRows, slideLine, transpose, turnsUntilQuestion } from "./model.ts";
+import {
+  boardsEqual,
+  canMerge,
+  convertTile,
+  Game,
+  makeNewBaseQuestion,
+  makeQuestion,
+  QUESTIONS_BEFORE_NEW_BASE,
+  reverseRows,
+  slideLine,
+  transpose,
+  turnsUntilQuestion,
+} from "./model.ts";
 import type { Board, Direction, GameState } from "./types.ts";
 
-// Example data: a question to give the game with setQuestion
+// Example data: questions to give the game with setQuestion
 const POWER_QUESTION = { text: "2^5", answer: 32, tile: 32 };
+const NEW_BASE_QUESTION = { text: "3^2", answer: 9, tile: 9, newBase: 3 };
 
 const cases: Array<[number[], number[], number]> = [
   [[2, 2, 4, 4], [4, 8, 0, 0], 12],
@@ -101,9 +114,9 @@ function fakeRandom(...values: number[]): () => number {
 }
 
 // by default new tiles go in the first empty cell and are always a 2
-function gameWithBoard(board: Board, random = fakeRandom(0, 0.5)): Game {
+function gameWithBoard(board: Board, random = fakeRandom(0, 0.5), base = 2): Game {
   const game = new Game(random);
-  game.setBoard(board);
+  game.setBoard(board, base);
   return game;
 }
 
@@ -555,6 +568,179 @@ describe("blocked tiles", () => {
     ]);
 
     expect(blockTile(game, 16).status).toBe("playing");
+  });
+});
+
+describe("new base questions", () => {
+  // the first random number picks the base and the second picks the power
+  it("ask about a low power of the new base", () => {
+    expect(makeNewBaseQuestion(2, fakeRandom(0, 0))).toEqual({ text: "3^2", answer: 9, tile: 9, newBase: 3 });
+    expect(makeNewBaseQuestion(2, fakeRandom(0.99, 0.99))).toEqual({ text: "9^3", answer: 729, tile: 729, newBase: 9 });
+  });
+
+  it("pick a base from 2 through 9 that isn't the current one", () => {
+    for (let base = 2; base <= 9; base++) {
+      for (const pick of [0, 0.5, 0.99]) {
+        const { newBase } = makeNewBaseQuestion(base, fakeRandom(pick, 0));
+
+        expect(newBase).not.toBe(base);
+        expect(newBase).toBeGreaterThanOrEqual(2);
+        expect(newBase).toBeLessThanOrEqual(9);
+      }
+    }
+  });
+
+  it("come after the set number of questions", () => {
+    const game = startedGame();
+
+    for (let question = 0; question < QUESTIONS_BEFORE_NEW_BASE; question++) {
+      expect(playTurns(game, turnsUntilQuestion()).question).toBe("√16");
+      game.answer(4);
+    }
+
+    expect(playTurns(game, turnsUntilQuestion()).question).toBe("3^3");
+  });
+
+  it("start the question count over on a new game", () => {
+    const game = startedGame();
+    playTurns(game, turnsUntilQuestion());
+    game.answer(4);
+    game.newGame();
+
+    for (let question = 0; question < QUESTIONS_BEFORE_NEW_BASE; question++) {
+      expect(playTurns(game, turnsUntilQuestion()).question).toBe("√16");
+      game.answer(4);
+    }
+  });
+});
+
+describe("changing the base", () => {
+  // a game with the new base question waiting for an answer
+  function gameWithNewBaseQuestion(): Game {
+    const game = gameWithBoard([
+      [2, 4, 8, 0],
+      [16, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    game.setQuestion(NEW_BASE_QUESTION);
+    return game;
+  }
+
+  it("changes every tile to the new base and keeps its power", () => {
+    const state = gameWithNewBaseQuestion().answer(9);
+
+    expect(state.base).toBe(3);
+    expect(state.board).toEqual([
+      [3, 9, 27, 0],
+      [81, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+  });
+
+  it("changes the base after a wrong answer too", () => {
+    expect(gameWithNewBaseQuestion().answer(8).base).toBe(3);
+  });
+
+  it("keeps the base after a question that isn't about a new base", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(32).base).toBe(2);
+  });
+
+  it("clears the old blocked tiles", () => {
+    const game = startedGame();
+    blockTile(game, 32);
+    game.setQuestion(NEW_BASE_QUESTION);
+
+    expect(game.answer(9).blocked).toEqual([]);
+  });
+
+  it("only blocks the new tile on a wrong answer", () => {
+    const game = startedGame();
+    blockTile(game, 32);
+    game.setQuestion(NEW_BASE_QUESTION);
+
+    expect(game.answer(8).blocked).toEqual([9]);
+  });
+
+  it("starts the question count over", () => {
+    const game = startedGame();
+
+    // the last of these questions brings the new base
+    for (let question = 0; question <= QUESTIONS_BEFORE_NEW_BASE; question++) {
+      playTurns(game, turnsUntilQuestion());
+      game.answer(0);
+    }
+
+    expect(playTurns(game, turnsUntilQuestion()).question).toBe("√81");
+  });
+
+  it("goes back to the first base on a new game", () => {
+    const game = gameWithNewBaseQuestion();
+    game.answer(9);
+
+    expect(game.newGame().base).toBe(2);
+  });
+});
+
+describe("a game in base 3", () => {
+  // returns a new copy each time, so one test can't change another test's board
+  function nineBoard(): Board {
+    return [
+      [9, 9, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ];
+  }
+
+  it("merges two 9s into a 27 and scores 27", () => {
+    const state = gameWithBoard(nineBoard(), fakeRandom(0, 0.5), 3).move("left");
+
+    expect(state.board[0][0]).toBe(27);
+    expect(state.score).toBe(27);
+  });
+
+  it("makes the new tile a 3 or a 9", () => {
+    const three = gameWithBoard(nineBoard(), fakeRandom(0, 0.5), 3).move("left");
+    expect(three.board[0]).toEqual([27, 3, 0, 0]);
+
+    const nine = gameWithBoard(nineBoard(), fakeRandom(0, 0.05), 3).move("left");
+    expect(nine.board[0]).toEqual([27, 9, 0, 0]);
+  });
+});
+
+describe("bases and blocked tiles", () => {
+  it("in base 3, 3 3 9 0 becomes 9 9 0 0", () => {
+    expect(slideLine([3, 3, 9, 0], [], 3)).toEqual({ line: [9, 9, 0, 0], gained: 9 });
+  });
+
+  it("with 32 blocked, 32 32 0 0 stays the same", () => {
+    expect(slideLine([32, 32, 0, 0], [32])).toEqual({ line: [32, 32, 0, 0], gained: 0 });
+  });
+
+  it("going from base 2 to base 3 turns 32 into 243", () => {
+    expect(convertTile(32, 2, 3)).toBe(243);
+  });
+
+  it("a wrong answer to √64 blocks 64", () => {
+    const game = startedGame();
+    game.setQuestion(makeQuestion(2, fakeRandom(0.4, 0.99)));
+
+    expect(game.answer(7).blocked).toEqual([64]);
+  });
+
+  it("keeps the exact power going from any base to any other base", () => {
+    for (let oldBase = 2; oldBase <= 9; oldBase++) {
+      for (let newBase = 2; newBase <= 9; newBase++) {
+        for (let power = 1; power <= 12; power++) {
+          expect(convertTile(oldBase ** power, oldBase, newBase)).toBe(newBase ** power);
+        }
+      }
+    }
   });
 });
 
