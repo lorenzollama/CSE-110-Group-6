@@ -23,7 +23,7 @@ const STATE_AFTER_MOVE: GameState = {
 // so these tests need no browser, no Konva and no real game logic.
 function setup() {
   const game = { newGame: vi.fn(), move: vi.fn(() => STATE_AFTER_MOVE), answer: vi.fn() };
-  const view = { draw: vi.fn(), onNewGameClick: vi.fn() };
+  const view = { draw: vi.fn(), drawAnswer: vi.fn(), onNewGameClick: vi.fn() };
   const controller = new Minigame2Controller(game, view as unknown as Minigame2View);
   return { game, view, controller };
 }
@@ -121,5 +121,73 @@ describe("Minigame2Controller.handleKeyDown", () => {
       expect(event.preventDefault).not.toHaveBeenCalled();
     }
     expect(game.move).not.toHaveBeenCalled();
+  });
+});
+// Example data: a state with a question up
+const STATE_WITH_QUESTION: GameState = { ...STATE_AFTER_MOVE, question: "2^5" };
+
+// Builds a controller whose game has just asked a question
+function setupWithQuestion() {
+  const parts = setup();
+  parts.game.newGame.mockReturnValue(STATE_WITH_QUESTION);
+  parts.game.answer.mockReturnValue(STATE_AFTER_MOVE);
+  parts.controller.startNewGame();
+  parts.view.draw.mockClear();
+  parts.view.drawAnswer.mockClear();
+  return parts;
+}
+
+describe("Minigame2Controller while a question is up", () => {
+  it("types digits instead of moving the board", () => {
+    const { game, view, controller } = setupWithQuestion();
+
+    pressKey(controller, "3");
+    pressKey(controller, "2");
+    pressKey(controller, "ArrowLeft");
+    pressKey(controller, "d");
+
+    expect(game.move).not.toHaveBeenCalled();
+    expect(view.drawAnswer).toHaveBeenLastCalledWith("32");
+  });
+
+  it("sends the typed number to answer() on Enter and redraws with the result", () => {
+    const { game, view, controller } = setupWithQuestion();
+
+    pressKey(controller, "3");
+    pressKey(controller, "2");
+    pressKey(controller, "Enter");
+
+    expect(game.answer).toHaveBeenCalledWith(32);
+    expect(view.draw).toHaveBeenCalledWith(STATE_AFTER_MOVE);
+  });
+
+  it("erases the last digit with Backspace", () => {
+    const { game, controller } = setupWithQuestion();
+
+    pressKey(controller, "3");
+    pressKey(controller, "9");
+    pressKey(controller, "Backspace");
+    pressKey(controller, "2");
+    pressKey(controller, "Enter");
+
+    expect(game.answer).toHaveBeenCalledWith(32);
+  });
+
+  it("does not send an empty answer", () => {
+    const { game, controller } = setupWithQuestion();
+
+    pressKey(controller, "Enter");
+
+    expect(game.answer).not.toHaveBeenCalled();
+  });
+
+  it("moves the board again once the question is answered", () => {
+    const { game, controller } = setupWithQuestion();
+
+    pressKey(controller, "1");
+    pressKey(controller, "Enter");
+    pressKey(controller, "ArrowLeft");
+
+    expect(game.move).toHaveBeenCalledWith("left");
   });
 });

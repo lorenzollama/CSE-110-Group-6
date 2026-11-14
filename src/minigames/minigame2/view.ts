@@ -42,6 +42,9 @@ export class Minigame2View implements View {
   private scoreText: Konva.Text;
   private newGameButton: Konva.Group;
   private gameOverPopup: Konva.Group;
+  private questionPopup: Konva.Group;
+  private questionText: Konva.Text;
+  private answerText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -64,6 +67,11 @@ export class Minigame2View implements View {
     this.newGameButton = createNewGameButton();
     this.gameOverPopup = createGameOverPopup(this.newGameButton);
     this.group.add(this.gameOverPopup);
+
+    this.questionText = createPopupText(BOARD_Y + 110, 48, "bold");
+    this.answerText = createPopupText(BOARD_Y + 200, 40, "normal");
+    this.questionPopup = createQuestionPopup(this.questionText, this.answerText);
+    this.group.add(this.questionPopup);
   }
 
   /**
@@ -72,7 +80,18 @@ export class Minigame2View implements View {
   draw(state: GameState): void {
     this.drawTiles(state.board);
     this.scoreText.text(`Score: ${state.score}`);
-    this.gameOverPopup.visible(state.status === "over");
+    this.questionText.text(state.question ?? "");
+    this.questionPopup.visible(state.question !== null);
+    // the board can be full while a question is up, so the question goes first
+    this.gameOverPopup.visible(state.status === "over" && state.question === null);
+    this.group.getLayer()?.batchDraw();
+  }
+
+  /**
+   * Shows what the player has typed so far in the question popup
+   */
+  drawAnswer(typed: string): void {
+    this.answerText.text(`${typed}_`);
     this.group.getLayer()?.batchDraw();
   }
 
@@ -215,5 +234,38 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
     align: "center",
   }));
   popup.add(newGameButton);
+  return popup;
+}
+
+// A line of centered text across the board, used in the question popup
+function createPopupText(y: number, fontSize: number, fontStyle: string): Konva.Text {
+  return new Konva.Text({
+    x: BOARD_X,
+    y,
+    width: BOARD_SIZE,
+    text: "",
+    fontSize,
+    fontStyle,
+    fontFamily: "Arial",
+    fill: TEXT_COLOR,
+    align: "center",
+  });
+}
+
+// Covers the board with the question, the typed answer and how to send it. It starts hidden.
+function createQuestionPopup(questionText: Konva.Text, answerText: Konva.Text): Konva.Group {
+  const popup = new Konva.Group({ visible: false });
+  popup.add(new Konva.Rect({
+    x: BOARD_X,
+    y: BOARD_Y,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    fill: "white",
+    opacity: 0.9,
+    cornerRadius: 8,
+  }));
+  const hint = createPopupText(BOARD_Y + 280, 20, "normal");
+  hint.text("Type the answer, then press Enter");
+  popup.add(questionText, answerText, hint);
   return popup;
 }
