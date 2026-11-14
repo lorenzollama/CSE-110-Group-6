@@ -1,7 +1,7 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
 import { STAGE_WIDTH } from "./constants.ts";
-import type { Board, GameState } from "./types.ts";
+import type { GameState } from "./types.ts";
 
 // Board layout, in pixels
 const GRID_SIZE = 4;
@@ -30,6 +30,7 @@ const TILE_COLORS: Record<number, string> = {
   2048: "#ffe082",
 };
 const BIG_TILE_COLOR = "#ffca28"; // for any tile bigger than 2048
+const BLOCKED_TILE_COLOR = "#9e9e9e"; // grey, so blocked tiles stand out as unmergeable
 
 /**
  * Minigame2View - draws Minigame 2 with Konva
@@ -70,7 +71,7 @@ export class Minigame2View implements View {
    * Draws a game state on the screen
    */
   draw(state: GameState): void {
-    this.drawTiles(state.board);
+    this.drawTiles(state);
     this.scoreText.text(`Score: ${state.score}`);
     this.gameOverPopup.visible(state.status === "over");
     this.group.getLayer()?.batchDraw();
@@ -110,7 +111,8 @@ export class Minigame2View implements View {
   }
 
   // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
-  private drawTiles(board: Board): void {
+  private drawTiles(state: GameState): void {
+    const { board, blocked } = state;
     this.tiles.destroyChildren();
 
     for (let row = 0; row < GRID_SIZE; row++) {
@@ -126,7 +128,7 @@ export class Minigame2View implements View {
           y,
           width: TILE_SIZE,
           height: TILE_SIZE,
-          fill: TILE_COLORS[value] ?? BIG_TILE_COLOR,
+          fill: tileColor(value, blocked),
           cornerRadius: 6,
         }));
         this.tiles.add(new Konva.Text({
@@ -159,6 +161,11 @@ export class Minigame2View implements View {
     this.group.visible(false);
     this.group.getLayer()?.batchDraw();
   }
+}
+
+// Blocked tiles are grey; every other tile gets the color for its value
+export function tileColor(value: number, blocked: number[]): string {
+  return blocked.includes(value) ? BLOCKED_TILE_COLOR : TILE_COLORS[value] ?? BIG_TILE_COLOR;
 }
 
 // Top-left corner of the cell at (row, col)
