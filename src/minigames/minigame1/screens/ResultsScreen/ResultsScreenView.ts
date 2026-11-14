@@ -8,18 +8,30 @@ import type { Stage } from "konva/lib/Stage";
 export class ResultsScreenView implements View {
 	private group: Konva.Group;
 	private finalScoreText: Konva.Text;
+	private background: Konva.Rect;
 
-	constructor(stage: Stage, onPlayAgainClick: () => void) {
+	constructor(stage: Stage, onPlayAgainButtonClick: () => void) {
 		this.group = new Konva.Group({ visible: false });
+				
+		this.background = new Konva.Rect({
+			x: 0,
+			y: 0,
+			width: stage.width(),
+			height: stage.height(),
+			fill: "black",
+			listening: false,
+		});
+		this.group.add(this.background);
 
 		// "Game Over" title
 		const title = new Konva.Text({
 			x: stage.width() / 2,
-			y: 100,
-			text: "GAME OVER!",
-			fontSize: 48,
+			y: 150,
+			text: "Game Over",
+			fontSize: 64,
 			fontFamily: "Arial",
-			fill: "red",
+			stroke: "white",
+			strokeWidth: 2,
 			align: "center",
 		});
 		title.offsetX(title.width() / 2);
@@ -28,11 +40,12 @@ export class ResultsScreenView implements View {
 		// Final score display
 		this.finalScoreText = new Konva.Text({
 			x: stage.width() / 2,
-			y: 200,
+			y: 250,
 			text: "Final Score: 0",
 			fontSize: 36,
 			fontFamily: "Arial",
-			fill: "black",
+			stroke: "white",
+			strokeWidth: 2,
 			align: "center",
 		});
 		this.group.add(this.finalScoreText);
@@ -41,29 +54,29 @@ export class ResultsScreenView implements View {
 		const playAgainButtonGroup = new Konva.Group();
 		const playAgainButton = new Konva.Rect({
 			x: stage.width() / 2 - 100,
-			y: 480,
+			y: 400,
 			width: 200,
 			height: 60,
-			fill: "blue",
+			fill: "green",
 			cornerRadius: 10,
-			stroke: "darkblue",
+			stroke: "darkgreen",
 			strokeWidth: 3,
 		});
-		const playAgainText = new Konva.Text({
+		const playAgainButtonText = new Konva.Text({
 			x: stage.width() / 2,
-			y: 495,
-			text: "PLAY AGAIN",
+			y: 415,
+			text: "START GAME",
 			fontSize: 24,
 			fontFamily: "Arial",
 			fill: "white",
 			align: "center",
 		});
-		playAgainText.offsetX(playAgainText.width() / 2);
+		playAgainButtonText.offsetX(playAgainButtonText.width() / 2);
 		playAgainButtonGroup.add(playAgainButton);
-		playAgainButtonGroup.add(playAgainText);
+		playAgainButtonGroup.add(playAgainButtonText);
 
 		// Button interaction - on the group
-		playAgainButtonGroup.on("click", onPlayAgainClick);
+		playAgainButtonGroup.on("click", onPlayAgainButtonClick);
 
 		this.group.add(playAgainButtonGroup);
 	}
