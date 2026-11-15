@@ -5,7 +5,7 @@ import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
-import { saveHighScores, saveLevelProgress } from "../screens/levels/levelProgressStorage";
+import { submitUnlockedLevel } from "../api/progress";
 import type { HighScoresModel } from "../screens/levels/HighScoresModel";
 
 /**
@@ -114,12 +114,13 @@ export class ScrapShooterController extends ScreenController {
   private endGame(model: ScrapShooterModel): void {
     window.removeEventListener('keydown', this.onKeyDown);
     this.levelsByTopic[this.topic].completeLevel(this.level);
-    saveLevelProgress(this.levelsByTopic); // so the unlock survives a page refresh
+    // Save the unlock on the server so it survives a refresh. If saving fails, the game keeps going.
+    submitUnlockedLevel(this.topic, this.levelsByTopic[this.topic].getUnlockedLevels())
+      .catch(err => console.warn('Could not save level progress', err));
 
     // Only wins count toward a level's high score, so it's recorded here and not in gameOver.
     const score = model.getScore();
     const isNewBest = this.highScores.recordWin(this.topic, this.level, score);
-    if (isNewBest) saveHighScores(this.highScores);
     const best = this.highScores.getBest(this.topic, this.level) ?? score;
     this.view.showBest(best);
 

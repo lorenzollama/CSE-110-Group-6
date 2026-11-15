@@ -8,9 +8,9 @@ import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
 import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
 import { LevelsController } from "./screens/levels/LevelsController.ts";
-import { createLevelsByTopic } from "./screens/levels/LevelsModel.ts";
-import { loadHighScores, loadLevelProgress } from "./screens/levels/levelProgressStorage.ts";
+import { createLevelsByTopic, type LevelsByTopic, type SavedLevelProgress } from "./screens/levels/LevelsModel.ts";
 import { HighScoresModel } from "./screens/levels/HighScoresModel.ts";
+import { getLevelProgress } from "./api/progress.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -27,10 +27,12 @@ class App implements ScreenSwitcher {
   private startController: StartController;
   private topicSelect: TopicSelectController;
   private levelsController: LevelsController;
-  private levelsByTopic = createLevelsByTopic(loadLevelProgress()); // picks up where the player left off
-  private highScores = new HighScoresModel(loadHighScores()); // shared: the game records wins, the map shows them
+  private levelsByTopic: LevelsByTopic;
+  private highScores = new HighScoresModel(); // shared: the game records wins, the map shows them
 
-  constructor(container: string) {
+  /** savedProgress comes from the server, so the player picks up where they left off. */
+  constructor(container: string, savedProgress: SavedLevelProgress) {
+    this.levelsByTopic = createLevelsByTopic(savedProgress);
     this.stage = new Konva.Stage({
       container,
       width: window.innerWidth,
@@ -149,7 +151,15 @@ class App implements ScreenSwitcher {
   }
 }
 
-const app = new App("container");
-
-// Open on the start screen; its buttons switch to the games.
-app.switchToScreen({ type: "menu" });
+// Load the saved progress from the server first, then start the app.
+// If the server isn't running, everyone starts at level 1 and the game still works (it just won't save).
+getLevelProgress()
+  .catch((err): SavedLevelProgress => {
+    console.warn("Could not load level progress (is `npm run server` running?)", err);
+    return {};
+  })
+  .then((savedProgress) => {
+    const app = new App("container", savedProgress);
+    // Open on the start screen; its buttons switch to the games.
+    app.switchToScreen({ type: "menu" });
+  });
