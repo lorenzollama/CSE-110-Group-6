@@ -1,19 +1,34 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
-import { STAGE_WIDTH } from "./constants.ts";
+import { GRID_SIZE, STAGE_HEIGHT, STAGE_WIDTH } from "./constants.ts";
 import type { Board, GameState } from "./types.ts";
 
-// Board layout, in pixels
-const GRID_SIZE = 4;
-const TILE_SIZE = 100;
-const GAP = 10;
+// Board layout, in pixels. The tile size is worked out from GRID_SIZE so the
+// whole board fits between the score and the bottom of the stage.
+const BOARD_Y = 100; // leaves room for the score above the board
+const BOTTOM_MARGIN = 20;
+const GAP_RATIO = 0.1; // each gap is this fraction of a tile's width
+
+// space the board may take up: GRID_SIZE tiles plus GRID_SIZE + 1 gaps
+const MAX_BOARD_SIZE = STAGE_HEIGHT - BOARD_Y - BOTTOM_MARGIN;
+const TILE_SIZE = Math.floor(MAX_BOARD_SIZE / (GRID_SIZE + (GRID_SIZE + 1) * GAP_RATIO));
+const GAP = Math.floor(TILE_SIZE * GAP_RATIO);
+// rounding down leaves a few spare pixels, so size the board to fit the tiles exactly
 const BOARD_SIZE = GRID_SIZE * TILE_SIZE + (GRID_SIZE + 1) * GAP;
 const BOARD_X = (STAGE_WIDTH - BOARD_SIZE) / 2;
-const BOARD_Y = 100;
 
 const BOARD_COLOR = "#8d99ae";
 const EMPTY_CELL_COLOR = "#cdd3db";
 const TEXT_COLOR = "#2b2d42";
+
+// Game over popup: "No moves left" with the New game button under it,
+// centered as one block over the middle of the board
+const GAME_OVER_TEXT_SIZE = 40;
+const NEW_GAME_BUTTON_WIDTH = 180;
+const NEW_GAME_BUTTON_HEIGHT = 56;
+const GAME_OVER_SPACING = 50; // between the text and the button
+const GAME_OVER_TOP =
+  BOARD_Y + (BOARD_SIZE - (GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING + NEW_GAME_BUTTON_HEIGHT)) / 2;
 
 // Each tile value gets its own color
 const TILE_COLORS: Record<number, string> = {
@@ -135,7 +150,7 @@ export class Minigame2View implements View {
           width: TILE_SIZE,
           height: TILE_SIZE,
           text: String(value),
-          fontSize: 36,
+          fontSize: tileFontSize(value),
           fontStyle: "bold",
           fontFamily: "Arial",
           fill: TEXT_COLOR,
@@ -169,13 +184,31 @@ function cellPosition(row: number, col: number): { x: number; y: number } {
   };
 }
 
+// Tile number sizing, as fractions of the tile's width
+const MAX_TEXT_HEIGHT = 0.5; // a number is never taller than half the tile
+const MAX_TEXT_WIDTH = 0.85; // leaves a little padding on the left and right
+const DIGIT_WIDTH = 0.6; // a bold Arial digit is about 0.6 times as wide as the font size
+
+/**
+ * The font size that fits a tile's number inside the tile.
+ *
+ * Short numbers are capped by the tile's height, so 2 and 64 look the same size.
+ * Longer numbers shrink so all their digits fit across the tile.
+ */
+export function tileFontSize(value: number, tileSize: number = TILE_SIZE): number {
+  const digits = String(value).length;
+  const heightLimit = tileSize * MAX_TEXT_HEIGHT;
+  const widthLimit = (tileSize * MAX_TEXT_WIDTH) / (digits * DIGIT_WIDTH);
+  return Math.floor(Math.min(heightLimit, widthLimit));
+}
+
 // A dark rounded button that says "New game"
 function createNewGameButton(): Konva.Group {
-  const width = 180;
-  const height = 56;
+  const width = NEW_GAME_BUTTON_WIDTH;
+  const height = NEW_GAME_BUTTON_HEIGHT;
   const button = new Konva.Group({
     x: BOARD_X + (BOARD_SIZE - width) / 2,
-    y: BOARD_Y + 240,
+    y: GAME_OVER_TOP + GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING,
   });
   button.add(new Konva.Rect({ width, height, fill: TEXT_COLOR, cornerRadius: 8 }));
   button.add(new Konva.Text({
@@ -205,10 +238,10 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
   }));
   popup.add(new Konva.Text({
     x: BOARD_X,
-    y: BOARD_Y + 150,
+    y: GAME_OVER_TOP,
     width: BOARD_SIZE,
     text: "No moves left",
-    fontSize: 40,
+    fontSize: GAME_OVER_TEXT_SIZE,
     fontStyle: "bold",
     fontFamily: "Arial",
     fill: TEXT_COLOR,
@@ -217,3 +250,4 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
   popup.add(newGameButton);
   return popup;
 }
+
