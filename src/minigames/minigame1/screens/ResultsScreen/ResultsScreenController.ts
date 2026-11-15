@@ -31,6 +31,7 @@ export class ResultsScreenController extends ScreenController {
 	 */
 	showResults(finalScore: number): void {
 		this.model.setFinalScore(finalScore);
+		this.model.savePersonalBest(this.model.getFinalScore());
 		this.view.updateFinalScore(finalScore);
 
 		this.view.show();
@@ -52,5 +53,12 @@ export class ResultsScreenController extends ScreenController {
 	 */
 	getView(): ResultsScreenView {
 		return this.view;
+	}
+
+	/**
+	 * Gets the player's saved personal best for the start screen
+	 */
+	getPersonalBest(): number | null {
+		return this.model.loadPersonalBest();
 	}
 }
