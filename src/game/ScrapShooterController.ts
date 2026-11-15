@@ -6,7 +6,7 @@ import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
-import { saveLevelProgress } from "../screens/levels/levelProgressStorage";
+import { submitUnlockedLevel } from "../api/progress";
 
 /**
  * Scraps sit on screen and the first one in the list is the target. Type its answer
@@ -118,7 +118,9 @@ export class ScrapShooterController extends ScreenController {
   private endGame(model: ScrapShooterModel): void {
     window.removeEventListener('keydown', this.onKeyDown);
     this.levelsByTopic[this.topic].completeLevel(this.level);
-    saveLevelProgress(this.levelsByTopic); // so the unlock survives a page refresh
+    // Save the unlock on the server so it survives a refresh. If saving fails, the game keeps going.
+    submitUnlockedLevel(this.topic, this.levelsByTopic[this.topic].getUnlockedLevels())
+      .catch(err => console.warn('Could not save level progress', err));
 
     this.popups.showLevelComplete(
       { level: this.level, score: model.getScore(), accuracy: model.getAccuracy() },
