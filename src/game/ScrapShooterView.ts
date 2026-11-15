@@ -1,6 +1,6 @@
 import Konva from 'konva';
 import type { View } from '../types';
-import type { Scrap } from './ScrapShooterModel';
+import { FRONT_LINE_Y, type Scrap } from './ScrapShooterModel';
 import {makeButton} from "../popups/PopupView";
 
 const WIDTH = 800;
@@ -28,7 +28,8 @@ export class ScrapShooterView implements View {
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
   private highScoreText!: Konva.Text;
-private healthBar!: Konva.Group;
+  private waveText!: Konva.Text;
+  private healthBar!: Konva.Group;
 
   getGroup(): Konva.Group {
     return this.group;
@@ -86,10 +87,21 @@ private healthBar!: Konva.Group;
       fill: 'white',
     });
 
-this.healthBar = new Konva.Group({ x: 20, y: 16 });
+this.waveText = new Konva.Text({
+      x: WIDTH / 2 - 100,
+      y: 16,
+      width: 200,
+      align: 'center',
+      text: '',
+      fontSize: 20,
+      fill: 'white',
+    });
 
+    this.healthBar = new Konva.Group({ x: 20, y: 16 });
+
+    this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.healthBar);
+    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.waveText, this.healthBar);
     this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280' ,100));
   }
 
@@ -115,6 +127,20 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
         points: [SHIP.x, SHIP.y - 30, SHIP.x - 24, SHIP.y + 18, SHIP.x + 24, SHIP.y + 18],
         closed: true,
         fill: 'white',
+      }),
+    );
+  }
+
+  /** A dashed line across the screen. A scrap that touches it is lost and costs health. */
+  private drawFrontLine(): void {
+    const y = FRONT_LINE_Y + SCRAP_RADIUS;
+    this.group.add(
+      new Konva.Line({
+        points: [0, y, WIDTH, y],
+        stroke: 'white',
+        strokeWidth: 2,
+        dash: [12, 8],
+        listening: false,
       }),
     );
   }
@@ -156,23 +182,28 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
     this.group.getLayer()?.batchDraw();
   }
 
-  showHealth(health: number, maxHealth: number): void {
-  this.healthBar.destroyChildren();
-  for (let i = 0; i < maxHealth; i++) {
-    this.healthBar.add(
-      new Konva.Rect({
-        x: i * 30,
-        y: 0,
-        width: 22,
-        height: 22,
-        stroke: 'white',
-        strokeWidth: 2,
-        fill: i < health ? 'white' : 'black',
-      }),
-    );
+  showWave(wave: number, totalWaves: number): void {
+    this.waveText.text(`Wave ${wave} / ${totalWaves}`);
+    this.group.getLayer()?.batchDraw();
   }
-  this.group.getLayer()?.batchDraw();
-}
+
+  showHealth(health: number, maxHealth: number): void {
+    this.healthBar.destroyChildren();
+    for (let i = 0; i < maxHealth; i++) {
+      this.healthBar.add(
+        new Konva.Rect({
+          x: i * 30,
+          y: 0,
+          width: 22,
+          height: 22,
+          stroke: 'white',
+          strokeWidth: 2,
+          fill: i < health ? 'white' : 'black',
+        }),
+      );
+    }
+    this.group.getLayer()?.batchDraw();
+  }
 
   // ------------------------------------------------------------- actions
 

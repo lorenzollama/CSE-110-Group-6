@@ -5,6 +5,7 @@ import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
+import { TOTAL_WAVES } from './logic/waves';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
 
 /**
@@ -43,6 +44,7 @@ export class ScrapShooterController extends ScreenController {
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
     this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    this.view.showWave(1, TOTAL_WAVES);
 
     window.addEventListener('keydown', this.onKeyDown);
 

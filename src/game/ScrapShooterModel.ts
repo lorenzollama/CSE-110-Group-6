@@ -4,6 +4,8 @@ import { isCorrect, makeQuestionForTopic, type Question } from './logic/question
 // Number of fixed spots where scraps sit (positions live in the view).
 export const SLOT_COUNT = 4;
 export const MAX_HEALTH = 3;
+/** Screen y of a scrap's center when it hits the front line. */
+export const FRONT_LINE_Y = 360;
 // Long enough for a typed fraction like "12/18".
 const MAX_ANSWER_LENGTH = 5;
 // PLACEHOLDER: Every submitted answer counts, right or wrong. The game ends after this many.
