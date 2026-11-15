@@ -50,6 +50,9 @@ export class Minigame1Controller implements ScreenSwitcher {
 
 		switch (screen.type) {
 		case "menu":
+			this.menuController.getView().updatePersonalBest(
+				this.resultsController.getPersonalBest()
+			);
 			this.menuController.show();
 			break;
 
