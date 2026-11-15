@@ -134,7 +134,7 @@ describe('ScrapShooterModel typing', () => {
     const model = newModel();
     loseAllHealth(model);
     expect(model.isLost()).toBe(true);
-    expect(answerRight(model)).toEqual({ type: 'ignored' });
+    expect(answer(model, '4')).toEqual({ type: 'ignored' });
     expect(model.getScore()).toBe(0);
   });
 
@@ -246,7 +246,8 @@ describe('ScrapShooterModel health', () => {
 
   it('does not lose health while scraps are above the front line', () => {
     const model = newModel();
-    run(model, 10);
+    const secondsToFall = (FRONT_LINE_Y - SPAWN_Y) / waveSettings(1, 1).speed;
+    run(model, secondsToFall - 1); // just before the first scrap gets there
     expect(model.getHealth()).toBe(MAX_HEALTH);
   });
 
