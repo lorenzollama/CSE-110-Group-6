@@ -9,6 +9,7 @@ import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
 import { LevelsController } from "./screens/levels/LevelsController.ts";
 import { createLevelsByTopic } from "./screens/levels/LevelsModel.ts";
+import { loadLevelProgress } from "./screens/levels/levelProgressStorage.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -25,7 +26,7 @@ class App implements ScreenSwitcher {
   private startController: StartController;
   private topicSelect: TopicSelectController;
   private levelsController: LevelsController;
-  private levelsByTopic = createLevelsByTopic();
+  private levelsByTopic = createLevelsByTopic(loadLevelProgress()); // picks up where the player left off
 
   constructor(container: string) {
     this.stage = new Konva.Stage({
