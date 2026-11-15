@@ -1,14 +1,18 @@
 /**
- * High scores MODEL: the best score on each level of each topic.
+ * High scores MODEL: each topic's high score, which is cumulative across its levels.
+ *
+ * It remembers the best winning score on each level, and a topic's total is the sum of
+ * those bests. That way replaying a level only raises the total by beating that level's
+ * old best (otherwise replaying level 1 over and over would pile up points).
  * Only won levels count: the game controller records a score only when a level is passed.
- * No drawing and no saving here, so it's easy to unit test (levelProgressStorage.ts saves it).
+ * No drawing and no saving here, so it's easy to unit test (the server saves the scores).
  */
 import type { Topic } from "../../types";
 import { TOPIC_OPTIONS } from "../topicSelect/TopicSelectModel";
 import { TOTAL_LEVELS } from "./LevelsModel";
 
 /**
- * Each topic's best score per level, in the shape that gets saved, e.g.
+ * Each topic's best score per level, as the server sends it, e.g.
  * { multiplication: { "1": 9, "3": 10 } }. Level numbers are text because JSON object keys are text.
  */
 export type SavedHighScores = Partial<Record<Topic, Record<string, number>>>;
@@ -24,7 +28,7 @@ const keyFor = (topic: Topic, level: number) => `${topic}:${level}`;
 export class HighScoresModel {
   private best = new Map<string, number>();
 
-  /** Starts from saved high scores. Saved entries that aren't a real level and score are dropped. */
+  /** Starts from saved scores. Saved entries that aren't a real level and score are dropped. */
   constructor(saved: SavedHighScores = {}) {
     for (const { topic } of TOPIC_OPTIONS) {
       const levels = saved[topic] ?? {};
@@ -40,9 +44,18 @@ export class HighScoresModel {
     return this.best.get(keyFor(topic, level)) ?? null;
   }
 
+  /** The topic's high score: the total of the best score on each of its won levels. */
+  getTopicTotal(topic: Topic): number {
+    let total = 0;
+    for (let level = 1; level <= TOTAL_LEVELS; level++) {
+      total += this.getBest(topic, level) ?? 0;
+    }
+    return total;
+  }
+
   /**
-   * Records the score of a won level. Returns true if it's a new best (the first win, or
-   * higher than the old best). A tie isn't a new best.
+   * Records the score of a won level. Returns true if it beat that level's old best (or was
+   * its first win), which means the topic total went up and the score should be saved.
    */
   recordWin(topic: Topic, level: number, score: number): boolean {
     if (!isRealLevel(level) || !isRealScore(score)) return false;
@@ -50,19 +63,5 @@ export class HighScoresModel {
     if (oldBest !== null && score <= oldBest) return false;
     this.best.set(keyFor(topic, level), score);
     return true;
-  }
-
-  /** Every best score, in the shape that gets saved. Topics with no wins are left out. */
-  toSaved(): SavedHighScores {
-    const saved: SavedHighScores = {};
-    for (const { topic } of TOPIC_OPTIONS) {
-      const levels: Record<string, number> = {};
-      for (let level = 1; level <= TOTAL_LEVELS; level++) {
-        const best = this.getBest(topic, level);
-        if (best !== null) levels[level] = best;
-      }
-      if (Object.keys(levels).length > 0) saved[topic] = levels;
-    }
-    return saved;
   }
 }

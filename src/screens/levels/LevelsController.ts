@@ -32,11 +32,11 @@ export class LevelsController extends ScreenController {
     show(): void {
         const label = TOPIC_OPTIONS.find(option => option.topic === this.topic)?.label ?? "";
         this.view.setTitle(`${label} Levels`);
-        const bestScores: (number | null)[] = [];
-        for (let level = 1; level <= TOTAL_LEVELS; level++) {
-            bestScores.push(this.highScores.getBest(this.topic, level));
-        }
-        this.view.showLevels(TOTAL_LEVELS, this.levelsByTopic[this.topic].getUnlockedLevels(), bestScores);
+        this.view.showLevels(
+            TOTAL_LEVELS,
+            this.levelsByTopic[this.topic].getUnlockedLevels(),
+            this.highScores.getTopicTotal(this.topic),
+        );
         super.show();
     }
 }

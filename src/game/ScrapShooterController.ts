@@ -5,7 +5,7 @@ import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
-import { submitUnlockedLevel } from "../api/progress";
+import { submitLevelScore, submitUnlockedLevel } from "../api/progress";
 import type { HighScoresModel } from "../screens/levels/HighScoresModel";
 
 /**
@@ -45,7 +45,6 @@ export class ScrapShooterController extends ScreenController {
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
     this.view.showHealth(model.getHealth(), MAX_HEALTH);
-    this.view.showBest(this.highScores.getBest(this.topic, this.level));
 
     window.addEventListener('keydown', this.onKeyDown);
   }
@@ -118,14 +117,16 @@ export class ScrapShooterController extends ScreenController {
     submitUnlockedLevel(this.topic, this.levelsByTopic[this.topic].getUnlockedLevels())
       .catch(err => console.warn('Could not save level progress', err));
 
-    // Only wins count toward a level's high score, so it's recorded here and not in gameOver.
+    // Only wins count toward the topic's high score, so it's recorded here and not in gameOver.
+    // The level map shows the topic's total; it only changes when this level's best is beaten.
     const score = model.getScore();
-    const isNewBest = this.highScores.recordWin(this.topic, this.level, score);
-    const best = this.highScores.getBest(this.topic, this.level) ?? score;
-    this.view.showBest(best);
+    if (this.highScores.recordWin(this.topic, this.level, score)) {
+      submitLevelScore(this.topic, this.level, score)
+        .catch(err => console.warn('Could not save the score', err));
+    }
 
     this.popups.showLevelComplete(
-      { level: this.level, score, accuracy: model.getAccuracy(), best, isNewBest },
+      { level: this.level, score, accuracy: model.getAccuracy() },
       {
         onNextLevel: () =>{
           if(this.level < TOTAL_LEVELS) this.startLevel(this.topic, this.level + 1);

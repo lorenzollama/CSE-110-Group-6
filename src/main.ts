@@ -8,9 +8,9 @@ import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
 import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
 import { LevelsController } from "./screens/levels/LevelsController.ts";
-import { createLevelsByTopic, type LevelsByTopic, type SavedLevelProgress } from "./screens/levels/LevelsModel.ts";
+import { createLevelsByTopic, type LevelsByTopic } from "./screens/levels/LevelsModel.ts";
 import { HighScoresModel } from "./screens/levels/HighScoresModel.ts";
-import { getLevelProgress } from "./api/progress.ts";
+import { getProgress, type SavedProgress } from "./api/progress.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -28,11 +28,12 @@ class App implements ScreenSwitcher {
   private topicSelect: TopicSelectController;
   private levelsController: LevelsController;
   private levelsByTopic: LevelsByTopic;
-  private highScores = new HighScoresModel(); // shared: the game records wins, the map shows them
+  private highScores: HighScoresModel; // shared: the game records wins, the map shows the topic totals
 
-  /** savedProgress comes from the server, so the player picks up where they left off. */
-  constructor(container: string, savedProgress: SavedLevelProgress) {
-    this.levelsByTopic = createLevelsByTopic(savedProgress);
+  /** saved comes from the server, so the player picks up where they left off. */
+  constructor(container: string, saved: SavedProgress) {
+    this.levelsByTopic = createLevelsByTopic(saved.unlockedLevels);
+    this.highScores = new HighScoresModel(saved.bestScores);
     this.stage = new Konva.Stage({
       container,
       width: window.innerWidth,
@@ -151,15 +152,16 @@ class App implements ScreenSwitcher {
   }
 }
 
-// Load the saved progress from the server first, then start the app.
-// If the server isn't running, everyone starts at level 1 and the game still works (it just won't save).
-getLevelProgress()
-  .catch((err): SavedLevelProgress => {
-    console.warn("Could not load level progress (is `npm run server` running?)", err);
-    return {};
+// Load the saved progress and scores from the server first, then start the app.
+// If the server isn't running, everyone starts at level 1 with no scores and the game
+// still works (it just won't save).
+getProgress()
+  .catch((err): SavedProgress => {
+    console.warn("Could not load saved progress (is `npm run server` running?)", err);
+    return { unlockedLevels: {}, bestScores: {} };
   })
-  .then((savedProgress) => {
-    const app = new App("container", savedProgress);
+  .then((saved) => {
+    const app = new App("container", saved);
     // Open on the start screen; its buttons switch to the games.
     app.switchToScreen({ type: "menu" });
   });
