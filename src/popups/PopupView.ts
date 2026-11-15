@@ -60,9 +60,10 @@ export class PopupView {
       y: 80, width: W, fontSize: 20, align: "center",
       text: `You passed Level ${info.level}`,
     }));
+    const bestLine = info.isNewBest ? "⭐ New best!" : `Best: ${info.best}`;
     box.add(new Konva.Text({
       y: 125, width: W, fontSize: 18, align: "center", fill: "#374151", lineHeight: 1.5,
-      text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
+      text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%\n${bestLine}`,
     }));
     box.add(makeButton(40, H - 70, "Next level", actions.onNextLevel, "#16a34a"));
     box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));

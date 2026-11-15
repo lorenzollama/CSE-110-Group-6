@@ -29,7 +29,7 @@ popups.showWrongAnswer({
   // after "Got it", show the level-complete popup
   //this part has to be modifed to change so the player can finished the game
 
-  popups.showLevelComplete({ level: 1, score: 340, accuracy: 85 }, {
+  popups.showLevelComplete({ level: 1, score: 340, accuracy: 85, best: 340, isNewBest: true }, {
     onNextLevel: () => console.log("next level"),
     onMenu: () => console.log("menu"),
   });

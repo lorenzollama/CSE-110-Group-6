@@ -18,7 +18,7 @@ const wrongAnswer = {
   correctAnswer: "42",
   explanation: "6 groups of 7 is 42.",
 };
-const levelComplete = { level: 1, score: 340, accuracy: 85 };
+const levelComplete = { level: 1, score: 340, accuracy: 85, best: 340, isNewBest: true };
 const gameOver = { score: 4, accuracy: 40 };
 // PopupModel only remembers which popup is open.
 describe("PopupModel", () => {

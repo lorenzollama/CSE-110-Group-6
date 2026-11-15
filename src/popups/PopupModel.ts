@@ -16,6 +16,8 @@ export interface LevelCompleteInfo {
   level: number;
   score: number;
   accuracy: number; // 0–100
+  best: number;       // best score on this level, including this game
+  isNewBest: boolean; // true if this game beat the old best (or was the first win)
 }
 /** The data the game hands to the game-over popup. */
 export interface GameOverInfo {

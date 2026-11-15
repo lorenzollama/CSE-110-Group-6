@@ -1,12 +1,12 @@
 import type Konva from 'konva';
-import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
-import { saveLevelProgress } from "../screens/levels/levelProgressStorage";
+import { saveHighScores, saveLevelProgress } from "../screens/levels/levelProgressStorage";
+import type { HighScoresModel } from "../screens/levels/HighScoresModel";
 
 /**
  * Scraps sit on screen and the first one in the list is the target. Type its answer
@@ -24,6 +24,7 @@ export class ScrapShooterController extends ScreenController {
     private screenSwitcher: ScreenSwitcher,
     popupLayer: Konva.Layer,
     private levelsByTopic: LevelsByTopic,
+    private highScores: HighScoresModel, // the same one the level map shows
   ) {
     super();
     this.popups = new PopupController(new PopupView(popupLayer));
@@ -44,14 +45,9 @@ export class ScrapShooterController extends ScreenController {
     this.view.highlightTarget(model.getScraps());
     this.view.showTyped(model.getTyped());
     this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    this.view.showBest(this.highScores.getBest(this.topic, this.level));
 
     window.addEventListener('keydown', this.onKeyDown);
-
-    getHighScore()
-      .then(highScore => {
-        if (this.model === model) this.view.showHighScore(highScore); // skip if the game was left meanwhile
-      })
-      .catch(err => console.warn('Could not load high score', err));
   }
 
   hide(): void {
@@ -120,8 +116,15 @@ export class ScrapShooterController extends ScreenController {
     this.levelsByTopic[this.topic].completeLevel(this.level);
     saveLevelProgress(this.levelsByTopic); // so the unlock survives a page refresh
 
+    // Only wins count toward a level's high score, so it's recorded here and not in gameOver.
+    const score = model.getScore();
+    const isNewBest = this.highScores.recordWin(this.topic, this.level, score);
+    if (isNewBest) saveHighScores(this.highScores);
+    const best = this.highScores.getBest(this.topic, this.level) ?? score;
+    this.view.showBest(best);
+
     this.popups.showLevelComplete(
-      { level: this.level, score: model.getScore(), accuracy: model.getAccuracy() },
+      { level: this.level, score, accuracy: model.getAccuracy(), best, isNewBest },
       {
         onNextLevel: () =>{
           if(this.level < TOTAL_LEVELS) this.startLevel(this.topic, this.level + 1);
@@ -130,12 +133,6 @@ export class ScrapShooterController extends ScreenController {
         onMenu: () => this.backToLevels(),
       },
     );
-    
-    submitHighScore(model.getScore())
-      .then(({ highScore }) => {
-        if (this.model === model) this.view.showHighScore(highScore);
-      })
-      .catch(err => console.warn('Could not save high score', err));
   }
 
   private gameOver(model: ScrapShooterModel): void {
@@ -148,12 +145,7 @@ export class ScrapShooterController extends ScreenController {
         onMenu: () => this.backToLevels(),
       },
     );
-    
-    submitHighScore(model.getScore())
-      .then(({ highScore }) => {
-        if (this.model === model) this.view.showHighScore(highScore);
-      })
-      .catch(err => console.warn('Could not save high score', err));
+    // A lost game doesn't count toward the level's high score.
   }
 
   /** Starts a fresh game of the given topic and level. */

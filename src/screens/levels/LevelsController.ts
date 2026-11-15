@@ -2,12 +2,17 @@ import {ScreenController, type ScreenSwitcher, type Topic} from "../../types";
 import {LevelsView} from "./LevelsView";
 import {TOTAL_LEVELS, type LevelsByTopic} from "./LevelsModel";
 import {TOPIC_OPTIONS} from "../topicSelect/TopicSelectModel";
+import type {HighScoresModel} from "./HighScoresModel";
 
 export class LevelsController extends ScreenController {
     private view: LevelsView;
     private topic: Topic = "multiplication";
 
-    constructor(private screenSwitcher: ScreenSwitcher, private levelsByTopic: LevelsByTopic) {
+    constructor(
+        private screenSwitcher: ScreenSwitcher,
+        private levelsByTopic: LevelsByTopic,
+        private highScores: HighScoresModel, // the same one the game records wins in
+    ) {
         super();
         this.view = new LevelsView(
             (level: number) => this.screenSwitcher.switchToScreen({ type: "main game", topic: this.topic, level }),
@@ -27,7 +32,11 @@ export class LevelsController extends ScreenController {
     show(): void {
         const label = TOPIC_OPTIONS.find(option => option.topic === this.topic)?.label ?? "";
         this.view.setTitle(`${label} Levels`);
-        this.view.showLevels(TOTAL_LEVELS, this.levelsByTopic[this.topic].getUnlockedLevels());
+        const bestScores: (number | null)[] = [];
+        for (let level = 1; level <= TOTAL_LEVELS; level++) {
+            bestScores.push(this.highScores.getBest(this.topic, level));
+        }
+        this.view.showLevels(TOTAL_LEVELS, this.levelsByTopic[this.topic].getUnlockedLevels(), bestScores);
         super.show();
     }
 }

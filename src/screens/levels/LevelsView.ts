@@ -38,7 +38,11 @@ export class LevelsView implements View {
         this.title.offsetX(this.title.width() / 2);
     }
 
-    showLevels(totalLevels: number, unlockedLevels: number): void {
+    /**
+     * Draws every level button as done, current, or locked. bestScores[level - 1] is that
+     * level's best score, or null if it hasn't been won yet (then nothing is shown under it).
+     */
+    showLevels(totalLevels: number, unlockedLevels: number, bestScores: (number | null)[]): void {
         this.levelButtons.destroyChildren();
         for(let level = 1; level <= totalLevels; level++) {
             const index = level - 1;
@@ -70,6 +74,19 @@ export class LevelsView implements View {
                 fill: "white",
                 align: "center"
             }));
+
+            const best = bestScores[index];
+            if (best !== null && best !== undefined) {
+                button.add(new Konva.Text({
+                    x: -40,
+                    y: 38,
+                    width: 80,
+                    text: `Best ${best}`,
+                    fontSize: 14,
+                    fill: "#374151",
+                    align: "center",
+                }));
+            }
 
             if(level <= unlockedLevels) {
                 button.on("click", () => this.onLevelClick(level));

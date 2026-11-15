@@ -81,7 +81,7 @@ private healthBar!: Konva.Group;
       y: 16,
       width: 200,
       align: 'right',
-      text: 'High score: –',
+      text: 'Best: –',
       fontSize: 20,
       fill: 'white',
     });
@@ -151,8 +151,9 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
     this.group.getLayer()?.batchDraw();
   }
 
-  showHighScore(highScore: number): void {
-    this.highScoreText.text(`High score: ${highScore}`);
+  /** Shows the best score on the level being played, or "–" if it hasn't been won yet. */
+  showBest(best: number | null): void {
+    this.highScoreText.text(`Best: ${best ?? '–'}`);
     this.group.getLayer()?.batchDraw();
   }
 
