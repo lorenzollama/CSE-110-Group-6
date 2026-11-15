@@ -6,7 +6,7 @@ export const LANE_COUNT = 4;
 export const MAX_HEALTH = 3;
 /** Screen y where a new scrap appears. */
 export const SPAWN_Y = 90;
-/** Screen y of a scrap's center when it hits the front line. It is then gone. */
+/** Screen y of a scrap's center when it hits the front line. It is then gone and costs 1 health. */
 export const FRONT_LINE_Y = 360;
 // A lane can take a new scrap only after its last one has fallen this far.
 const SPAWN_CLEARANCE = 100;
@@ -30,14 +30,14 @@ export type SubmitResult =
 /** What changed during one tick, so the controller can tell the view. */
 export interface TickResult {
   spawned: Scrap[];
-  missed: Scrap[]; // scraps that reached the front line and are gone
+  missed: Scrap[]; // scraps that reached the front line
   newWave: number | null; // the wave number if a new wave was reached, otherwise null
 }
 
 /**
  * Game state only. Scraps fall down the lanes in waves and the player shoots them by typing
  * the answer. The target is always the lowest scrap, the one closest to the front line.
- * A wrong answer costs 1 health.
+ * Health only drops when a scrap reaches the front line, never for a wrong answer.
  *
  * Time moves only when tick() is called, so tests can run a whole level in a few lines.
  */
@@ -86,7 +86,7 @@ export class ScrapShooterModel {
     return this.correct;
   }
 
-  /** How many mistakes the player can still afford. */
+  /** How many scraps can still reach the front line before the game is lost. */
   getHealth(): number {
     return this.health;
   }
@@ -139,12 +139,11 @@ export class ScrapShooterModel {
       this.scraps = this.scraps.filter(scrap => scrap !== target);
       return { type: 'correct', hit: target };
     }
-    this.loseHealth(); // for now a wrong answer still costs health
     return { type: 'incorrect', target, answer: value };
   }
 
   /**
-   * Moves time forward: scraps fall, scraps at the front line are removed, new scraps appear,
+   * Moves time forward: scraps fall, scraps at the front line cost health, new scraps appear,
    * and the next wave starts once the current one is cleared. Call it with small steps.
    */
   tick(seconds: number): TickResult {
@@ -163,6 +162,7 @@ export class ScrapShooterModel {
 
     result.missed = this.scraps.filter(scrap => scrap.y >= FRONT_LINE_Y);
     this.scraps = this.scraps.filter(scrap => scrap.y < FRONT_LINE_Y);
+    result.missed.forEach(() => this.loseHealth());
   }
 
   private advanceWave(seconds: number, result: TickResult): void {

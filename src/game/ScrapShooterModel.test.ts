@@ -37,9 +37,9 @@ function playPerfectly(model: ScrapShooterModel, maxSeconds = 600) {
   }
 }
 
-/** A player who answers wrong until the health runs out. */
+/** A player who never answers: three scraps reach the front line. */
 function loseAllHealth(model: ScrapShooterModel) {
-  for (let i = 0; i < MAX_HEALTH; i++) answerWrong(model);
+  for (let i = 0; i < MAX_HEALTH; i++) model.tick(16);
 }
 
 describe('ScrapShooterModel scoring', () => {
@@ -223,10 +223,10 @@ describe('ScrapShooterModel health', () => {
     expect(model.getHealth()).toBe(0);
   });
 
-  it('loses one health on a wrong answer', () => {
+  it('keeps its health on a wrong answer', () => {
     const model = newModel();
     answerWrong(model);
-    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
+    expect(model.getHealth()).toBe(MAX_HEALTH);
   });
 
   it('keeps its health on a right answer', () => {
@@ -235,11 +235,12 @@ describe('ScrapShooterModel health', () => {
     expect(model.getHealth()).toBe(MAX_HEALTH);
   });
 
-  it('removes a scrap that reaches the front line', () => {
+  it('loses one health when a scrap reaches the front line', () => {
     const model = newModel();
     const first = target(model);
     const result = model.tick((FRONT_LINE_Y - SPAWN_Y) / waveSettings(1, 1).speed + 1);
     expect(result.missed).toEqual([first]);
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
     expect(model.getScraps()).not.toContain(first);
   });
 
@@ -249,7 +250,7 @@ describe('ScrapShooterModel health', () => {
     expect(model.getHealth()).toBe(MAX_HEALTH);
   });
 
-  it('is lost after enough wrong answers', () => {
+  it('is lost after enough scraps reach the front line', () => {
     const model = newModel();
     loseAllHealth(model);
     expect(model.getHealth()).toBe(0);
@@ -306,10 +307,11 @@ describe('ScrapShooterModel waves', () => {
     expect(model.getScore()).toBe(expectedScraps);
   });
 
-  it('can be won even if a scrap reaches the front line', () => {
+  it('is won even if a scrap reaches the front line, as long as health is left', () => {
     const model = newModel();
     model.tick(16); // the first scrap gets through
     playPerfectly(model);
     expect(model.isOver()).toBe(true);
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
   });
 });

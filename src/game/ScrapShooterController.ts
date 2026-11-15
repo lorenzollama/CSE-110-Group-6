@@ -13,8 +13,8 @@ const MAX_FRAME_SECONDS = 0.1;
 
 /**
  * Scraps fall down the screen in waves. The lowest one is the target. Type its answer and
- * press Enter. Right: the ship shoots it. Wrong: the input box border thickens briefly, a
- * popup explains the answer and the player loses 1 health.
+ * press Enter. Right: the ship shoots it. Wrong: the input box border thickens briefly and a
+ * popup explains the answer. A scrap that reaches the front line costs 1 health.
  * The game loop moves the model forward each frame and pauses while a popup is open.
  */
 export class ScrapShooterController extends ScreenController {
@@ -97,6 +97,7 @@ export class ScrapShooterController extends ScreenController {
   private step(model: ScrapShooterModel, seconds: number): void {
     const result = model.tick(seconds);
     if (result.newWave !== null) this.view.showWave(result.newWave, TOTAL_WAVES);
+    if (result.missed.length > 0) this.view.showHealth(model.getHealth(), MAX_HEALTH);
     this.view.render(model.getScraps(), model.getTarget());
 
     if (model.isLost()) this.gameOver(model);
@@ -127,7 +128,6 @@ export class ScrapShooterController extends ScreenController {
     const result = model.submit();
     if (result.type === 'ignored') return;
     this.view.showTyped(model.getTyped());
-    this.view.showHealth(model.getHealth(), MAX_HEALTH);
 
     if (result.type === 'correct') {
       this.view.shoot(result.hit);
@@ -143,10 +143,7 @@ export class ScrapShooterController extends ScreenController {
           correctAnswer: question.answer,
           explanation: question.explanation,
         },
-        // If the player lost all health, show the game-over popup after "Got it".
-        () => {
-          if (model.isLost()) this.gameOver(model);
-        },
+        () => {}, // a wrong answer costs no health, so the game just carries on after "Got it"
       );
     }
   }
