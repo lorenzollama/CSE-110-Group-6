@@ -64,7 +64,7 @@ export class MenuScreenView implements View {
 		const startText = new Konva.Text({
 			x: stage.width() / 2,
 			y: 315,
-			text: "START GAME",
+			text: "Start Game",
 			fontSize: 24,
 			fontFamily: "Arial",
 			fill: "white",

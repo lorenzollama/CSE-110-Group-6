@@ -65,7 +65,7 @@ export class ResultsScreenView implements View {
 		const playAgainButtonText = new Konva.Text({
 			x: stage.width() / 2,
 			y: 415,
-			text: "START GAME",
+			text: "Return to Menu",
 			fontSize: 24,
 			fontFamily: "Arial",
 			fill: "white",
