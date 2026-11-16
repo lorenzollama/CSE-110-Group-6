@@ -30,21 +30,24 @@ const GAME_OVER_SPACING = 50; // between the text and the button
 const GAME_OVER_TOP =
   BOARD_Y + (BOARD_SIZE - (GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING + NEW_GAME_BUTTON_HEIGHT)) / 2;
 
-// Each tile value gets its own color
-const TILE_COLORS: Record<number, string> = {
-  2: "#c8e6c9",
-  4: "#a5d6a7",
-  8: "#b3e5fc",
-  16: "#81d4fa",
-  32: "#c5cae9",
-  64: "#9fa8da",
-  128: "#e1bee7",
-  256: "#ce93d8",
-  512: "#f8bbd0",
-  1024: "#f48fb1",
-  2048: "#ffe082",
+// Each base gets its own hue (degrees on the color wheel)
+const BASE_HUES: Record<number, number> = {
+  2: 0, // red
+  3: 30, // orange
+  4: 55, // yellow
+  5: 120, // green
+  6: 175, // teal
+  7: 220, // blue
+  8: 275, // purple
+  9: 330, // pink
 };
-const BIG_TILE_COLOR = "#ffca28"; // for any tile bigger than 2048
+const TILE_SATURATION = 70;
+// The power sets the shade: power 1 is very light and each power is a bit darker
+const FIRST_POWER_LIGHTNESS = 90;
+const LIGHTNESS_STEP = 7;
+const MIN_LIGHTNESS = 20; // so very big tiles don't turn black
+// tiles darker than this get a white number so it stays readable
+const DARK_TILE_LIGHTNESS = 55;
 const BLOCKED_TILE_COLOR = "#9e9e9e"; // grey, so blocked tiles stand out as unmergeable
 
 /**
@@ -146,7 +149,7 @@ export class Minigame2View implements View {
 
   // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
   private drawTiles(state: GameState): void {
-    const { board, blocked } = state;
+    const { board, base, blocked } = state;
     this.tiles.destroyChildren();
 
     for (let row = 0; row < GRID_SIZE; row++) {
@@ -157,12 +160,13 @@ export class Minigame2View implements View {
         }
 
         const { x, y } = cellPosition(row, col);
+        const colors = tileColors(value, base, blocked);
         this.tiles.add(new Konva.Rect({
           x,
           y,
           width: TILE_SIZE,
           height: TILE_SIZE,
-          fill: tileColor(value, blocked),
+          fill: colors.fill,
           cornerRadius: 6,
         }));
         this.tiles.add(new Konva.Text({
@@ -174,7 +178,7 @@ export class Minigame2View implements View {
           fontSize: tileFontSize(value),
           fontStyle: "bold",
           fontFamily: "Arial",
-          fill: TEXT_COLOR,
+          fill: colors.text,
           align: "center",
           verticalAlign: "middle",
         }));
@@ -197,9 +201,19 @@ export class Minigame2View implements View {
   }
 }
 
-// Blocked tiles are grey; every other tile gets the color for its value
-export function tileColor(value: number, blocked: number[]): string {
-  return blocked.includes(value) ? BLOCKED_TILE_COLOR : TILE_COLORS[value] ?? BIG_TILE_COLOR;
+// Blocked tiles are grey. Otherwise the tile's color comes from the base, its shade from
+// its power, and the number is white on dark tiles
+export function tileColors(value: number, base: number, blocked: number[] = []): { fill: string; text: string } {
+  if (blocked.includes(value)) {
+    return { fill: BLOCKED_TILE_COLOR, text: TEXT_COLOR };
+  }
+  // round it because the log can come out a tiny bit off, like 4.999999999999999 for 9^5
+  const power = Math.round(Math.log(value) / Math.log(base));
+  const lightness = Math.max(MIN_LIGHTNESS, FIRST_POWER_LIGHTNESS - (power - 1) * LIGHTNESS_STEP);
+  return {
+    fill: `hsl(${BASE_HUES[base]}, ${TILE_SATURATION}%, ${lightness}%)`,
+    text: lightness < DARK_TILE_LIGHTNESS ? "white" : TEXT_COLOR,
+  };
 }
 
 // Top-left corner of the cell at (row, col)
