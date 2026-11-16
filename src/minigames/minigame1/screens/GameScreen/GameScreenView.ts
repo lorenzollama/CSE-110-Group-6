@@ -13,6 +13,8 @@ export class GameScreenView implements View {
 	private grid: Grid;
 	private scoreText: Konva.Text;
 	private statusText: Konva.Text;
+	private livesText: Konva.Text;
+	private roundText: Konva.Text;
 	private stage: Konva.Stage;
 	private background: Konva.Rect;
 	private selectionHandler?: (row: number, col: number) => void;
@@ -39,6 +41,23 @@ export class GameScreenView implements View {
 			});
 		this.group.add(this.scoreText);
 
+		this.livesText = new Konva.Text({
+			text: "Lives: 0",
+			fontSize: 32,
+			fontFamily: "Arial",
+			fill: "white",
+			});
+		this.group.add(this.livesText);
+
+		this.roundText = new Konva.Text({
+			text: "Round: 1",
+			fontSize: 24,
+			fontFamily: "Arial",
+			fill: "white",
+			listening: false,
+		});
+		this.group.add(this.roundText);
+
 		this.statusText = new Konva.Text({
 			text: "",
 			fontSize: 20,
@@ -63,10 +82,7 @@ export class GameScreenView implements View {
 		this.centerLayout();
 	}
 
-	/**
-	 * Centers the score, status message, and game board vertically
-	 * Updates the background size to match the stage
-	 */
+	// centers all ui elements
 	private centerLayout(): void {
 		const gridWidth = COLS * SQUARE_SIZE + (COLS - 1) * GAP;
 		const gridHeight = ROWS * SQUARE_SIZE + (ROWS - 1) * GAP;
@@ -101,34 +117,23 @@ export class GameScreenView implements View {
 			y: this.statusText.y() + this.statusText.height() + SCORE_GAP,
 		});
 
+		// Keep the current round near the top right corner
+		this.roundText.position({
+			x: this.stage.width() - this.roundText.width() - 24,
+			y: 24
+		});
+
 		this.group.getLayer()?.batchDraw();
 	}
 
-	/**
-	 * Registers the handler called when a player selects a light
-	 *
-	 * @param handler the function receiving the selected row and column
-	 */
 	setSelectionHandler(handler: (row: number, col: number) => void): void {
 		this.selectionHandler = handler;
 	}
 
-	/**
-	 * Briefly highlights the light selected by the player
-	 *
-	 * @param row the selected light's row
-	 * @param col the selected light's column
-	 */
 	showSelectionFeedback(row: number, col: number): void {
 		this.grid.getSquare(row, col)?.showSelectionFeedback();
 	}
 
-	/**
-	 * Displays instructions or feedback above the game board
-	 * Repositions the layout to keep the message centered
-	 *
-	 * @param message the message shown to players
-	 */
 	updateStatus(message: string): void {
 		this.statusText.text(message);
 		this.centerLayout();
@@ -136,6 +141,16 @@ export class GameScreenView implements View {
 
 	updateScore(score: number): void {
 		this.scoreText.text(`Score: ${score}`);
+		this.centerLayout();
+	}
+
+	updateRound(round: number): void {
+		this.roundText.text(`Round: ${round}`);
+		this.centerLayout();
+	}
+
+	updateLives(lives: number): void {
+		this.livesText.text(`Lives: ${lives}`);
 		this.centerLayout();
 	}
 

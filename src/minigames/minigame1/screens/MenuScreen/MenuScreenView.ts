@@ -8,6 +8,7 @@ import type { Stage } from "konva/lib/Stage";
 export class MenuScreenView implements View {
 	private group: Konva.Group;
 	private background: Konva.Rect;
+	private personalBestText: Konva.Text;
 
 	constructor(stage: Stage, onStartClick: () => void) {
 		this.group = new Konva.Group({ visible: true });
@@ -37,6 +38,18 @@ export class MenuScreenView implements View {
 		title.offsetX(title.width() / 2);
 		this.group.add(title);
 
+		this.personalBestText = new Konva.Text({
+			x: stage.width() / 2,
+			y: 235,
+			text: "No personal best yet",
+			fontSize: 22,
+			fontFamily: "Arial",
+			fill: "white",
+			listening: false,
+		});
+		this.personalBestText.offsetX(this.personalBestText.width() / 2);
+		this.group.add(this.personalBestText);
+
 		const startButtonGroup = new Konva.Group();
 		const startButton = new Konva.Rect({
 			x: stage.width() / 2 - 100,
@@ -51,7 +64,7 @@ export class MenuScreenView implements View {
 		const startText = new Konva.Text({
 			x: stage.width() / 2,
 			y: 315,
-			text: "START GAME",
+			text: "Start Game",
 			fontSize: 24,
 			fontFamily: "Arial",
 			fill: "white",
@@ -82,5 +95,19 @@ export class MenuScreenView implements View {
 
 	getGroup(): Konva.Group {
 		return this.group;
+	}
+
+	/**
+	 * Updates and centers the personal best label on the start screen
+	 */
+	updatePersonalBest(rounds: number | null): void {
+		if (rounds === null) {
+			this.personalBestText.text("No personal best yet");
+		}
+		else {
+			const unit = rounds === 1 ? "round" : "round";
+			this.personalBestText.text(`Personal best: ${rounds} ${unit}`);
+		}
+		this.personalBestText.offsetX(this.personalBestText.width() / 2);
 	}
 }
