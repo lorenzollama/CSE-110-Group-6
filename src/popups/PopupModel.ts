@@ -17,8 +17,13 @@ export interface LevelCompleteInfo {
   score: number;
   accuracy: number; // 0–100
 }
+/** The data the game hands to the game-over popup. */
+export interface GameOverInfo {
+  score: number;
+  accuracy: number; // 0–100
+}
 
-export type PopupKind = "wrongAnswer" | "levelComplete";
+export type PopupKind = "wrongAnswer" | "levelComplete" | "gameOver";
 
 /** Keeps track of which popup is open. Only one popup is open at a time. */
 export class PopupModel {

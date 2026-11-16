@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import type { View } from '../types';
 import type { Scrap } from './ScrapShooterModel';
+import {makeButton} from "../popups/PopupView";
 
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -26,6 +27,8 @@ export class ScrapShooterView implements View {
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
+  private highScoreText!: Konva.Text;
+private healthBar!: Konva.Group;
 
   getGroup(): Konva.Group {
     return this.group;
@@ -39,7 +42,7 @@ export class ScrapShooterView implements View {
     this.group.hide();
   }
 
-  build(): void {
+  build(onBack: () => void): void {
     this.inputBox = new Konva.Rect({
       x: WIDTH / 2 - 120,
       y: 520,
@@ -70,10 +73,24 @@ export class ScrapShooterView implements View {
         fill: 'black',
         listening: false,
       }),
+
     );
 
+    this.highScoreText = new Konva.Text({
+      x: WIDTH - 220,
+      y: 16,
+      width: 200,
+      align: 'right',
+      text: 'High score: –',
+      fontSize: 20,
+      fill: 'white',
+    });
+
+this.healthBar = new Konva.Group({ x: 20, y: 16 });
+
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText);
+    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.healthBar);
+    this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280' ,100));
   }
 
   destroy(): void {
@@ -87,6 +104,7 @@ export class ScrapShooterView implements View {
 
     this.scrapGroups.clear();
     this.group.destroyChildren();
+    document.body.style.cursor = 'default';
   }
 
   // ------------------------------------------------------------- drawing
@@ -132,6 +150,29 @@ export class ScrapShooterView implements View {
     this.inputText.text(typed === '' ? 'type answer' : typed);
     this.group.getLayer()?.batchDraw();
   }
+
+  showHighScore(highScore: number): void {
+    this.highScoreText.text(`High score: ${highScore}`);
+    this.group.getLayer()?.batchDraw();
+  }
+
+  showHealth(health: number, maxHealth: number): void {
+  this.healthBar.destroyChildren();
+  for (let i = 0; i < maxHealth; i++) {
+    this.healthBar.add(
+      new Konva.Rect({
+        x: i * 30,
+        y: 0,
+        width: 22,
+        height: 22,
+        stroke: 'white',
+        strokeWidth: 2,
+        fill: i < health ? 'white' : 'black',
+      }),
+    );
+  }
+  this.group.getLayer()?.batchDraw();
+}
 
   // ------------------------------------------------------------- actions
 

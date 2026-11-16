@@ -14,6 +14,7 @@ export class Minigame1Controller implements ScreenSwitcher {
 	private menuController: MenuScreenController;
 	private gameController: GameScreenController;
 	private resultsController: ResultsScreenController;
+	private menuLoadId = 0;
 
 	constructor(
 		stage: Konva.Stage,
@@ -39,6 +40,7 @@ export class Minigame1Controller implements ScreenSwitcher {
 
 	/** Hide every Minigame 1 screen when leaving the minigame. */
 	hide(): void {
+		this.menuLoadId++;
 		this.menuController.hide();
 		this.gameController.hide();
 		this.resultsController.hide();
@@ -49,12 +51,23 @@ export class Minigame1Controller implements ScreenSwitcher {
 		this.hide();
 
 		switch (screen.type) {
-		case "menu":
-			this.menuController.getView().updatePersonalBest(
-				this.resultsController.getPersonalBest()
-			);
+		case "menu": {
+			const menuLoadId = this.menuLoadId;
 			this.menuController.show();
+
+			void this.resultsController.getPersonalBest()
+				.then((personalBest) => {
+					if (menuLoadId !== this.menuLoadId) {
+						return;
+					}
+					this.menuController.getView().updatePersonalBest(personalBest);
+					this.layer.batchDraw();
+				})
+				.catch((error) => {
+					console.warn("Could not load Minigame 1 personal best", error);
+				});
 			break;
+		}
 
 		case "game":
 			this.gameController.startGame();
