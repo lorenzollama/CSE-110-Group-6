@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tileFontSize } from "./view.ts";
+import { tileColor, tileFontSize } from "./view.ts";
 
 // the constants tileFontSize uses, repeated here so the tests can check the
 // text really fits instead of just repeating the formula
@@ -40,5 +40,16 @@ describe("tileFontSize", () => {
 
   it("scales with the tile size", () => {
     expect(tileFontSize(2048, 100)).toBeGreaterThan(tileFontSize(2048, 43));
+  });
+});
+
+describe("tileColor", () => {
+  it("greys out a blocked tile", () => {
+    expect(tileColor(8, [8])).toBe("#9e9e9e");
+  });
+
+  it("keeps the normal color for a tile that is not blocked", () => {
+    expect(tileColor(8, [16])).toBe(tileColor(8, []));
+    expect(tileColor(8, [])).not.toBe("#9e9e9e");
   });
 });
