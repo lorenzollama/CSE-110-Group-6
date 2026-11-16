@@ -3,6 +3,12 @@ import type { ScreenSwitcher, Screen } from "./types";
 import { ScrapShooterController } from "./game/ScrapShooterController";
 import { Minigame1Controller } from "./minigames/minigame1/main";
 import { StartController } from "./screens/start/StartController";
+import { TopicSelectController } from "./screens/topicSelect/TopicSelectController";
+import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
+import { Game } from "./minigames/minigame2/model.ts";
+import { Minigame2View } from "./minigames/minigame2/view.ts";
+import { LevelsController } from "./screens/levels/LevelsController.ts";
+import { createLevelsByTopic } from "./screens/levels/LevelsModel.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -15,7 +21,11 @@ class App implements ScreenSwitcher {
   private minigame1Layer: Konva.Layer;
   private scrapShooter: ScrapShooterController;
   private minigame1: Minigame1Controller;
+  private minigame2: Minigame2Controller;
   private startController: StartController;
+  private topicSelect: TopicSelectController;
+  private levelsController: LevelsController;
+  private levelsByTopic = createLevelsByTopic();
 
   constructor(container: string) {
     this.stage = new Konva.Stage({
@@ -30,11 +40,16 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController();
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer, this.levelsByTopic);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
+
+    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View());
+    this.gameLayer.add(this.minigame2.getView().getGroup());
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.stage.add(this.gameLayer);
+    this.popupLayer.moveToTop(); // popups above the game
 
     this.minigame1Layer = new Konva.Layer();
     this.stage.add(this.minigame1Layer);
@@ -52,6 +67,10 @@ class App implements ScreenSwitcher {
 
     this.startController = new StartController(this);
     this.screenLayer.add(this.startController.getView().getGroup());
+    this.topicSelect = new TopicSelectController(this);
+    this.screenLayer.add(this.topicSelect.getView().getGroup());
+    this.levelsController = new LevelsController(this, this.levelsByTopic);
+    this.screenLayer.add(this.levelsController.getView().getGroup());
     this.centerScreens();
     this.screenLayer.draw();
 
@@ -64,18 +83,34 @@ class App implements ScreenSwitcher {
 
   switchToScreen(screen: Screen): void {
     this.scrapShooter.hide();
+    this.minigame2.hide();
     this.gameLayer.hide();
     this.screenLayer.hide();
+    this.startController.hide();
+    this.topicSelect.hide();
+    this.levelsController.hide();
     this.minigame1.hide();
 
     switch (screen.type) {
       case "menu":
         this.screenLayer.show();
+        this.startController.show();
+        break;
+
+      case "topic select":
+        this.screenLayer.show();
+        this.topicSelect.show();
+        break;
+
+      case "levels":
+        this.screenLayer.show();
+        this.levelsController.setTopic(screen.topic);
+        this.levelsController.show();
         break;
 
       case "main game":
         this.gameLayer.show();
-        this.scrapShooter.show();
+        this.scrapShooter.startLevel(screen.topic, screen.level);
         break;
 
       case "minigame1":
@@ -85,11 +120,14 @@ class App implements ScreenSwitcher {
         break;
 
       case "minigame2":
-        // TODO: the minigame 2 team shows their screen here
+        this.gameLayer.show();
+        this.minigame2.show();
+        this.minigame2.startNewGame();
         break;
 
       case "result":
         this.screenLayer.show();
+        this.startController.show();
         break;
     }
 
