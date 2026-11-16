@@ -4,6 +4,10 @@ import type { ScreenSwitcher } from "../../types.ts";
 import {
 	ResultsScreenModel,
 } from "./ResultsScreenModel.ts";
+import {
+	getMinigame1PersonalBest,
+	submitMinigame1Result,
+} from "../../../../api/minigame1PersonalBest.ts";
 import { ResultsScreenView } from "./ResultsScreenView.ts";
 
 /**
@@ -15,6 +19,7 @@ export class ResultsScreenController extends ScreenController {
 	private screenSwitcher: ScreenSwitcher;
 
 	private gameOverSound: HTMLAudioElement;
+	private pendingPersonalBestSave: Promise<void> = Promise.resolve();
 
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
@@ -31,7 +36,13 @@ export class ResultsScreenController extends ScreenController {
 	 */
 	showResults(finalScore: number): void {
 		this.model.setFinalScore(finalScore);
-		this.model.savePersonalBest(this.model.getFinalScore());
+		this.pendingPersonalBestSave = this.pendingPersonalBestSave
+			.then(async () => {
+				await submitMinigame1Result(finalScore);
+			})
+			.catch((error) => {
+				console.warn("Could not save Minigame 1 personal best", error);
+			});
 		this.view.updateFinalScore(finalScore);
 
 		this.view.show();
@@ -58,7 +69,8 @@ export class ResultsScreenController extends ScreenController {
 	/**
 	 * Gets the player's saved personal best for the start screen
 	 */
-	getPersonalBest(): number | null {
-		return this.model.loadPersonalBest();
+	async getPersonalBest(): Promise<number | null> {
+		await this.pendingPersonalBestSave;
+		return getMinigame1PersonalBest();
 	}
 }
