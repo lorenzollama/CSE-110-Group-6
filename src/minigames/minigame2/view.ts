@@ -1,35 +1,54 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
-import { STAGE_WIDTH } from "./constants.ts";
-import type { Board, GameState } from "./types.ts";
+import { GRID_SIZE, STAGE_HEIGHT, STAGE_WIDTH } from "./constants.ts";
+import type { GameState } from "./types.ts";
 
-// Board layout, in pixels
-const GRID_SIZE = 4;
-const TILE_SIZE = 100;
-const GAP = 10;
+// Board layout, in pixels. The tile size is worked out from GRID_SIZE so the
+// whole board fits between the score and the bottom of the stage.
+const BOARD_Y = 100; // leaves room for the score above the board
+const BOTTOM_MARGIN = 20;
+const GAP_RATIO = 0.1; // each gap is this fraction of a tile's width
+
+// space the board may take up: GRID_SIZE tiles plus GRID_SIZE + 1 gaps
+const MAX_BOARD_SIZE = STAGE_HEIGHT - BOARD_Y - BOTTOM_MARGIN;
+const TILE_SIZE = Math.floor(MAX_BOARD_SIZE / (GRID_SIZE + (GRID_SIZE + 1) * GAP_RATIO));
+const GAP = Math.floor(TILE_SIZE * GAP_RATIO);
+// rounding down leaves a few spare pixels, so size the board to fit the tiles exactly
 const BOARD_SIZE = GRID_SIZE * TILE_SIZE + (GRID_SIZE + 1) * GAP;
 const BOARD_X = (STAGE_WIDTH - BOARD_SIZE) / 2;
-const BOARD_Y = 100;
 
 const BOARD_COLOR = "#8d99ae";
 const EMPTY_CELL_COLOR = "#cdd3db";
 const TEXT_COLOR = "#2b2d42";
 
-// Each tile value gets its own color
-const TILE_COLORS: Record<number, string> = {
-  2: "#c8e6c9",
-  4: "#a5d6a7",
-  8: "#b3e5fc",
-  16: "#81d4fa",
-  32: "#c5cae9",
-  64: "#9fa8da",
-  128: "#e1bee7",
-  256: "#ce93d8",
-  512: "#f8bbd0",
-  1024: "#f48fb1",
-  2048: "#ffe082",
+// Game over popup: "No moves left" with the New game button under it,
+// centered as one block over the middle of the board
+const GAME_OVER_TEXT_SIZE = 40;
+const NEW_GAME_BUTTON_WIDTH = 180;
+const NEW_GAME_BUTTON_HEIGHT = 56;
+const GAME_OVER_SPACING = 50; // between the text and the button
+const GAME_OVER_TOP =
+  BOARD_Y + (BOARD_SIZE - (GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING + NEW_GAME_BUTTON_HEIGHT)) / 2;
+
+// Each base gets its own hue (degrees on the color wheel)
+const BASE_HUES: Record<number, number> = {
+  2: 0, // red
+  3: 30, // orange
+  4: 55, // yellow
+  5: 120, // green
+  6: 175, // teal
+  7: 220, // blue
+  8: 275, // purple
+  9: 330, // pink
 };
-const BIG_TILE_COLOR = "#ffca28"; // for any tile bigger than 2048
+const TILE_SATURATION = 70;
+// The power sets the shade: power 1 is very light and each power is a bit darker
+const FIRST_POWER_LIGHTNESS = 90;
+const LIGHTNESS_STEP = 7;
+const MIN_LIGHTNESS = 20; // so very big tiles don't turn black
+// tiles darker than this get a white number so it stays readable
+const DARK_TILE_LIGHTNESS = 55;
+const BLOCKED_TILE_COLOR = "#9e9e9e"; // grey, so blocked tiles stand out as unmergeable
 
 /**
  * Minigame2View - draws Minigame 2 with Konva
@@ -42,6 +61,9 @@ export class Minigame2View implements View {
   private scoreText: Konva.Text;
   private newGameButton: Konva.Group;
   private gameOverPopup: Konva.Group;
+  private questionPopup: Konva.Group;
+  private questionText: Konva.Text;
+  private answerText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -64,15 +86,31 @@ export class Minigame2View implements View {
     this.newGameButton = createNewGameButton();
     this.gameOverPopup = createGameOverPopup(this.newGameButton);
     this.group.add(this.gameOverPopup);
+
+    this.questionText = createPopupText(BOARD_Y + 110, 48, "bold");
+    this.answerText = createPopupText(BOARD_Y + 200, 40, "normal");
+    this.questionPopup = createQuestionPopup(this.questionText, this.answerText);
+    this.group.add(this.questionPopup);
   }
 
   /**
    * Draws a game state on the screen
    */
   draw(state: GameState): void {
-    this.drawTiles(state.board);
+    this.drawTiles(state);
     this.scoreText.text(`Score: ${state.score}`);
-    this.gameOverPopup.visible(state.status === "over");
+    this.questionText.text(state.question ?? "");
+    this.questionPopup.visible(state.question !== null);
+    // the board can be full while a question is up, so the question goes first
+    this.gameOverPopup.visible(state.status === "over" && state.question === null);
+    this.group.getLayer()?.batchDraw();
+  }
+
+  /**
+   * Shows what the player has typed so far in the question popup
+   */
+  drawAnswer(typed: string): void {
+    this.answerText.text(`${typed}_`);
     this.group.getLayer()?.batchDraw();
   }
 
@@ -110,7 +148,8 @@ export class Minigame2View implements View {
   }
 
   // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
-  private drawTiles(board: Board): void {
+  private drawTiles(state: GameState): void {
+    const { board, base, blocked } = state;
     this.tiles.destroyChildren();
 
     for (let row = 0; row < GRID_SIZE; row++) {
@@ -121,12 +160,13 @@ export class Minigame2View implements View {
         }
 
         const { x, y } = cellPosition(row, col);
+        const colors = tileColors(value, base, blocked);
         this.tiles.add(new Konva.Rect({
           x,
           y,
           width: TILE_SIZE,
           height: TILE_SIZE,
-          fill: TILE_COLORS[value] ?? BIG_TILE_COLOR,
+          fill: colors.fill,
           cornerRadius: 6,
         }));
         this.tiles.add(new Konva.Text({
@@ -135,10 +175,10 @@ export class Minigame2View implements View {
           width: TILE_SIZE,
           height: TILE_SIZE,
           text: String(value),
-          fontSize: 36,
+          fontSize: tileFontSize(value),
           fontStyle: "bold",
           fontFamily: "Arial",
-          fill: TEXT_COLOR,
+          fill: colors.text,
           align: "center",
           verticalAlign: "middle",
         }));
@@ -161,6 +201,21 @@ export class Minigame2View implements View {
   }
 }
 
+// Blocked tiles are grey. Otherwise the tile's color comes from the base, its shade from
+// its power, and the number is white on dark tiles
+export function tileColors(value: number, base: number, blocked: number[] = []): { fill: string; text: string } {
+  if (blocked.includes(value)) {
+    return { fill: BLOCKED_TILE_COLOR, text: TEXT_COLOR };
+  }
+  // round it because the log can come out a tiny bit off, like 4.999999999999999 for 9^5
+  const power = Math.round(Math.log(value) / Math.log(base));
+  const lightness = Math.max(MIN_LIGHTNESS, FIRST_POWER_LIGHTNESS - (power - 1) * LIGHTNESS_STEP);
+  return {
+    fill: `hsl(${BASE_HUES[base]}, ${TILE_SATURATION}%, ${lightness}%)`,
+    text: lightness < DARK_TILE_LIGHTNESS ? "white" : TEXT_COLOR,
+  };
+}
+
 // Top-left corner of the cell at (row, col)
 function cellPosition(row: number, col: number): { x: number; y: number } {
   return {
@@ -169,13 +224,31 @@ function cellPosition(row: number, col: number): { x: number; y: number } {
   };
 }
 
+// Tile number sizing, as fractions of the tile's width
+const MAX_TEXT_HEIGHT = 0.5; // a number is never taller than half the tile
+const MAX_TEXT_WIDTH = 0.85; // leaves a little padding on the left and right
+const DIGIT_WIDTH = 0.6; // a bold Arial digit is about 0.6 times as wide as the font size
+
+/**
+ * The font size that fits a tile's number inside the tile.
+ *
+ * Short numbers are capped by the tile's height, so 2 and 64 look the same size.
+ * Longer numbers shrink so all their digits fit across the tile.
+ */
+export function tileFontSize(value: number, tileSize: number = TILE_SIZE): number {
+  const digits = String(value).length;
+  const heightLimit = tileSize * MAX_TEXT_HEIGHT;
+  const widthLimit = (tileSize * MAX_TEXT_WIDTH) / (digits * DIGIT_WIDTH);
+  return Math.floor(Math.min(heightLimit, widthLimit));
+}
+
 // A dark rounded button that says "New game"
 function createNewGameButton(): Konva.Group {
-  const width = 180;
-  const height = 56;
+  const width = NEW_GAME_BUTTON_WIDTH;
+  const height = NEW_GAME_BUTTON_HEIGHT;
   const button = new Konva.Group({
     x: BOARD_X + (BOARD_SIZE - width) / 2,
-    y: BOARD_Y + 240,
+    y: GAME_OVER_TOP + GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING,
   });
   button.add(new Konva.Rect({ width, height, fill: TEXT_COLOR, cornerRadius: 8 }));
   button.add(new Konva.Text({
@@ -205,15 +278,48 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
   }));
   popup.add(new Konva.Text({
     x: BOARD_X,
-    y: BOARD_Y + 150,
+    y: GAME_OVER_TOP,
     width: BOARD_SIZE,
     text: "No moves left",
-    fontSize: 40,
+    fontSize: GAME_OVER_TEXT_SIZE,
     fontStyle: "bold",
     fontFamily: "Arial",
     fill: TEXT_COLOR,
     align: "center",
   }));
   popup.add(newGameButton);
+  return popup;
+}
+
+// A line of centered text across the board, used in the question popup
+function createPopupText(y: number, fontSize: number, fontStyle: string): Konva.Text {
+  return new Konva.Text({
+    x: BOARD_X,
+    y,
+    width: BOARD_SIZE,
+    text: "",
+    fontSize,
+    fontStyle,
+    fontFamily: "Arial",
+    fill: TEXT_COLOR,
+    align: "center",
+  });
+}
+
+// Covers the board with the question, the typed answer and how to send it. It starts hidden.
+function createQuestionPopup(questionText: Konva.Text, answerText: Konva.Text): Konva.Group {
+  const popup = new Konva.Group({ visible: false });
+  popup.add(new Konva.Rect({
+    x: BOARD_X,
+    y: BOARD_Y,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    fill: "white",
+    opacity: 0.9,
+    cornerRadius: 8,
+  }));
+  const hint = createPopupText(BOARD_Y + 280, 20, "normal");
+  hint.text("Type the answer, then press Enter");
+  popup.add(questionText, answerText, hint);
   return popup;
 }
