@@ -77,3 +77,14 @@ describe("tileColors", () => {
     expect(hueAndLightness(tileColors(59049, 9).fill).lightness).toBe(hueAndLightness(tileColors(32, 2).fill).lightness);
   });
 });
+
+describe("tileColors for blocked tiles", () => {
+  it("greys out a blocked tile", () => {
+    expect(tileColors(8, 2, [8]).fill).toBe("#9e9e9e");
+  });
+
+  it("keeps the base color for a tile that is not blocked", () => {
+    expect(tileColors(8, 2, [16])).toEqual(tileColors(8, 2, []));
+    expect(tileColors(8, 2, []).fill).not.toBe("#9e9e9e");
+  });
+});

@@ -48,6 +48,7 @@ const LIGHTNESS_STEP = 7;
 const MIN_LIGHTNESS = 20; // so very big tiles don't turn black
 // tiles darker than this get a white number so it stays readable
 const DARK_TILE_LIGHTNESS = 55;
+const BLOCKED_TILE_COLOR = "#9e9e9e"; // grey, so blocked tiles stand out as unmergeable
 
 /**
  * Minigame2View - draws Minigame 2 with Konva
@@ -60,6 +61,9 @@ export class Minigame2View implements View {
   private scoreText: Konva.Text;
   private newGameButton: Konva.Group;
   private gameOverPopup: Konva.Group;
+  private questionPopup: Konva.Group;
+  private questionText: Konva.Text;
+  private answerText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -82,6 +86,11 @@ export class Minigame2View implements View {
     this.newGameButton = createNewGameButton();
     this.gameOverPopup = createGameOverPopup(this.newGameButton);
     this.group.add(this.gameOverPopup);
+
+    this.questionText = createPopupText(BOARD_Y + 110, 48, "bold");
+    this.answerText = createPopupText(BOARD_Y + 200, 40, "normal");
+    this.questionPopup = createQuestionPopup(this.questionText, this.answerText);
+    this.group.add(this.questionPopup);
   }
 
   /**
@@ -90,7 +99,18 @@ export class Minigame2View implements View {
   draw(state: GameState): void {
     this.drawTiles(state);
     this.scoreText.text(`Score: ${state.score}`);
-    this.gameOverPopup.visible(state.status === "over");
+    this.questionText.text(state.question ?? "");
+    this.questionPopup.visible(state.question !== null);
+    // the board can be full while a question is up, so the question goes first
+    this.gameOverPopup.visible(state.status === "over" && state.question === null);
+    this.group.getLayer()?.batchDraw();
+  }
+
+  /**
+   * Shows what the player has typed so far in the question popup
+   */
+  drawAnswer(typed: string): void {
+    this.answerText.text(`${typed}_`);
     this.group.getLayer()?.batchDraw();
   }
 
@@ -129,7 +149,7 @@ export class Minigame2View implements View {
 
   // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
   private drawTiles(state: GameState): void {
-    const { board, base } = state;
+    const { board, base, blocked } = state;
     this.tiles.destroyChildren();
 
     for (let row = 0; row < GRID_SIZE; row++) {
@@ -140,7 +160,7 @@ export class Minigame2View implements View {
         }
 
         const { x, y } = cellPosition(row, col);
-        const colors = tileColors(value, base);
+        const colors = tileColors(value, base, blocked);
         this.tiles.add(new Konva.Rect({
           x,
           y,
@@ -181,8 +201,12 @@ export class Minigame2View implements View {
   }
 }
 
-// The tile's color comes from the base, its shade from its power, and the number is white on dark tiles
-export function tileColors(value: number, base: number): { fill: string; text: string } {
+// Blocked tiles are grey. Otherwise the tile's color comes from the base, its shade from
+// its power, and the number is white on dark tiles
+export function tileColors(value: number, base: number, blocked: number[] = []): { fill: string; text: string } {
+  if (blocked.includes(value)) {
+    return { fill: BLOCKED_TILE_COLOR, text: TEXT_COLOR };
+  }
   // round it because the log can come out a tiny bit off, like 4.999999999999999 for 9^5
   const power = Math.round(Math.log(value) / Math.log(base));
   const lightness = Math.max(MIN_LIGHTNESS, FIRST_POWER_LIGHTNESS - (power - 1) * LIGHTNESS_STEP);
@@ -267,3 +291,35 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
   return popup;
 }
 
+// A line of centered text across the board, used in the question popup
+function createPopupText(y: number, fontSize: number, fontStyle: string): Konva.Text {
+  return new Konva.Text({
+    x: BOARD_X,
+    y,
+    width: BOARD_SIZE,
+    text: "",
+    fontSize,
+    fontStyle,
+    fontFamily: "Arial",
+    fill: TEXT_COLOR,
+    align: "center",
+  });
+}
+
+// Covers the board with the question, the typed answer and how to send it. It starts hidden.
+function createQuestionPopup(questionText: Konva.Text, answerText: Konva.Text): Konva.Group {
+  const popup = new Konva.Group({ visible: false });
+  popup.add(new Konva.Rect({
+    x: BOARD_X,
+    y: BOARD_Y,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    fill: "white",
+    opacity: 0.9,
+    cornerRadius: 8,
+  }));
+  const hint = createPopupText(BOARD_Y + 280, 20, "normal");
+  hint.text("Type the answer, then press Enter");
+  popup.add(questionText, answerText, hint);
+  return popup;
+}
