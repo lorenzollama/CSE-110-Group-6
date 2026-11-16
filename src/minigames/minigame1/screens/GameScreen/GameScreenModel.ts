@@ -1,31 +1,37 @@
 import type { Coordinates } from "../../objects/Grid.ts";
+import { MAX_LIVES } from "../../constants.ts";
 
-/**
- * GameScreenModel - Manages game state
- */
 export class GameScreenModel {
 	private score = 0;
+	private round = 1;
+	private lives = 0;
 	private sequence: Coordinates[] = [];
 	private nextSelectionIndex = 0;
 	private acceptingInput = false;
 
 
-	/**
-	 * Resets the score, clears sequence progress, and disables player input
-	 */
+	//reset everthing
 	reset(): void {
 		this.score = 0;
+		this.round = 1;
+		this.lives = MAX_LIVES;
 		this.sequence = [];
 		this.nextSelectionIndex = 0;
         this.acceptingInput = false;
 	}
+	
+	// reset current sequence (incorrect)
+	resetCurrentSequence(): void {
+		this.nextSelectionIndex = 0;
+		this.acceptingInput = false;
+	}
 
-	/**
-	 * Copies the expected sequence and resets the player's input progress
-	 * Enables selections only when the sequence is not empty
-	 * 
-	 * @param sequence the light sequence the player must repeat
-	 */
+	// incorrect input -> get correct one
+	getCurrentExpected(): Coordinates | undefined {
+		return this.sequence[this.nextSelectionIndex];
+	}
+
+	// pass in sequence coordiantes
 	startPlayerTurn(sequence: Coordinates[]): void {
 		this.sequence = sequence.map(signal => ({
 			row: signal.row,
@@ -35,15 +41,8 @@ export class GameScreenModel {
         this.acceptingInput = this.sequence.length > 0;
 	}
 	
-	/**
-	 * Check a selection against the next expected signal
-	 * Stops accepting input after a mistake or a completed sequence
-	 *
-	 * @param selection the row and column of the selected light
-	 * @returns "ignored" if input is disabled, "incorrect" for a mismatch,
-	 * "correct" for a match with more signals remaining, or "complete"
-	 * when the entire sequence has been entered correctly
-	 */
+	// check a selection against the next expected signal
+	// stops accepting input after a mistake or a completed sequence
 	checkSelection(selection: Coordinates):
 		"ignored" | "correct" | "incorrect" | "complete" {
 		if (!this.acceptingInput) {
@@ -65,17 +64,41 @@ export class GameScreenModel {
 		return "correct";
 	}
 
-	/**
-	 * Increment score when lemon is clicked
-	 */
+	advanceRound(newSignal: Coordinates): boolean {
+		if (this.acceptingInput || this.sequence.length == 0 ||
+			this. nextSelectionIndex !== this.sequence.length) {
+			return false;
+		}
+		this.sequence.push({row: newSignal.row, col: newSignal.col});
+		this.round++;
+		this.resetCurrentSequence();
+		return true;
+	}
+
+	getSequence(): Coordinates[] {
+		return this.sequence.map(signal => ({
+			row: signal.row,
+			col: signal.col,
+		}));
+	}
+
+	getRound(): number {
+		return this.round;
+	}
+
 	incrementScore(): void {
 		this.score++;
 	}
 
-	/**
-	 * Get current score
-	 */
 	getScore(): number {
 		return this.score;
+	}
+
+	decrementLives(): void {
+		this.lives--;
+	}
+
+	getLives(): number {
+		return this.lives;
 	}
 }

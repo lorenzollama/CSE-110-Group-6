@@ -12,14 +12,11 @@ export class GameScreenController extends ScreenController {
 	private model: GameScreenModel;
 	private view: GameScreenView;
 	private screenSwitcher: ScreenSwitcher;
+	private currentSequence: Coordinates[] = [];
+	private gameGeneration = 0;
+	private gameOver = false;
+	private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
-	/**
-	 * Creates the model and view and connects player selection
-	 * to sequence checking, light highlighting, and status messages
-	 *
-	 * @param screenSwitcher the service used to navigate between screens
-	 * @param stage the Konva stage displaying the game
-	 */
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
@@ -27,6 +24,9 @@ export class GameScreenController extends ScreenController {
 		this.model = new GameScreenModel();
 		this.view = new GameScreenView(stage);
 		this.view.setSelectionHandler((row, col) => {
+			if (this.gameOver) {
+				return;
+			}
 			const result = this.model.checkSelection({ row, col });
 			if (result === "ignored") {
 				return;
@@ -37,44 +37,96 @@ export class GameScreenController extends ScreenController {
 				this.view.updateStatus("Correct! Keep Going.");
 			}
 			else if (result === "incorrect") {
-				this.view.updateStatus("Incorrect sequence. Attempt ended.");
+				this.model.decrementLives();
+				this.view.updateLives(this.model.getLives());
+
+				if (this.model.getLives() <= 0) { // no lives = game over
+					this.gameOver = true;
+					this.clearPendingTimers();
+					this.view.updateStatus("Out of lives! Game Over.");
+					this.endGame();
+				} else { // still have lives = replay
+					this.view.updateStatus("Incorrect! Here is the correct square.");
+					const expected = this.model.getCurrentExpected();
+					this.model.resetCurrentSequence();
+
+					// blink the correct square -> replay round
+					if (expected) {
+						this.view.getGrid().blink([expected], () => {
+							this.scheduleForCurrentGame(() => {
+								this.playSequence(this.currentSequence);
+							}, 500)
+						});
+					} else {
+						this.scheduleForCurrentGame(() => {
+							this.playSequence(this.currentSequence);
+						}, 1000);
+					}
+				}
 			}
 			else if (result === "complete") {
-				this.view.updateStatus("Sequence complete!");
-				this.endGame();
+				this.model.incrementScore();
+				this.view.updateScore(this.model.getScore());
+				const advanced = this.model.advanceRound(
+					this.getRandomCoordinates()
+				);
+				if (advanced) {
+					this.currentSequence = this.model.getSequence();
+					this.playSequence(this.currentSequence);
+				}
 			}
 		});
 	}
 
-	/**
-	 * Start the game
-	 * Displays instructions and enables input after playback finishes
-	 */
 	startGame(): void {
-		// Reset model state
+		// reset model state
+		this.gameGeneration++;
+		this.clearPendingTimers();
+		this.gameOver = false;
+
 		this.model.reset();
 
-		// Update the score and display playback instructions
+		// update the score and display playback instructions
 		this.view.updateScore(this.model.getScore());
 		this.view.updateStatus("Watch the sequence.");
+		this.view.updateLives(this.model.getLives());
 		this.view.show();
-
-		// example sequence, pass coords into grid
-		const sequence: Coordinates[] = [
-			{ row: 0, col: 0 },
-			{ row: 0, col: 1 },
-			{ row: 1, col: 1 },
-			{ row: 2, col: 2 },
-		];
+		this.currentSequence = [this.getRandomCoordinates()];
+		this.playSequence(this.currentSequence);
+	}
+	
+	private playSequence(sequence: Coordinates[]): void {
+		const generation = this.gameGeneration;
+		this.view.updateRound(this.model.getRound());
+		this.view.updateStatus("Watch the sequence.");
 		this.view.getGrid().blink(sequence, () => {
+			if (generation !== this.gameGeneration || this.gameOver) {
+				return;
+			}
 			this.model.startPlayerTurn(sequence);
 			this.view.updateStatus("Your turn! Repeat the sequence.");
 		});
 	}
 
-	/**
-	 * End the game
-	 */
+	private scheduleForCurrentGame(callback: () => void, delay: number): void {
+		const generation = this.gameGeneration;
+		const timer = setTimeout(() => {
+			this.pendingTimers.delete(timer);
+			if (generation !== this.gameGeneration || this.gameOver) {
+				return;
+			}
+			callback();
+		}, delay);
+		this.pendingTimers.add(timer);
+	}
+
+	private clearPendingTimers(): void {
+		for (const timer of this.pendingTimers) {
+			clearTimeout(timer);
+		}
+		this.pendingTimers.clear();
+	}
+
 	private endGame(): void {
 		// Switch to results screen with final score
 		this.screenSwitcher.switchToScreen({
@@ -89,16 +141,10 @@ export class GameScreenController extends ScreenController {
 		return { row, col };
 	}
 
-	/**
-	 * Get final score
-	 */
 	getFinalScore(): number {
 		return this.model.getScore();
 	}
-
-	/**
-	 * Get the view group
-	 */
+	
 	getView(): GameScreenView {
 		return this.view;
 	}
