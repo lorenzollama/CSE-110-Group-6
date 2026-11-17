@@ -22,7 +22,7 @@ export interface WaveSettings {
 export function waveSettings(level: number, wave: number): WaveSettings {
   return {
     count: BASE_COUNT + COUNT_PER_WAVE * (wave - 1) + COUNT_PER_LEVEL * (level - 1),
-    speed: BASE_SPEED + 3 * (level - 1) + 2 * (wave - 1),
+    speed: BASE_SPEED + 3 * (level - 1) + 5 * (wave - 1),
     interval: Math.max(MIN_INTERVAL, BASE_INTERVAL - 0.25 * (level - 1)),
   };
 }
