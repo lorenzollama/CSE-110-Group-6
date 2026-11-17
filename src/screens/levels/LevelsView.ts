@@ -8,6 +8,7 @@ export class LevelsView implements View {
     private levelButtons = new Konva.Group();
     private onLevelClick: (level: number) => void;
     private title: Konva.Text;
+    private totalScoreText: Konva.Text;
 
     constructor(onLevelClick: (level: number) => void, onBack:()=> void) {
         this.onLevelClick = onLevelClick;
@@ -24,6 +25,16 @@ export class LevelsView implements View {
                 });
         title.offsetX(title.width() / 2);
         this.group.add(title);
+
+        // The topic's high score, under the title. Its text is set in showLevels().
+        this.totalScoreText = new Konva.Text({
+            x: STAGE_WIDTH / 2,
+            y: 125,
+            fontSize: 22,
+            fontFamily: "Arial",
+            fill: "#374151",
+        });
+        this.group.add(this.totalScoreText);
         this.group.add(this.levelButtons);
     
         this.group.add(makeButton(STAGE_WIDTH / 2 - 75, 500, "Back", onBack, "#6b7280"));
@@ -38,7 +49,10 @@ export class LevelsView implements View {
         this.title.offsetX(this.title.width() / 2);
     }
 
-    showLevels(totalLevels: number, unlockedLevels: number): void {
+    /** Draws every level button as done, current, or locked, and the topic's total score. */
+    showLevels(totalLevels: number, unlockedLevels: number, totalScore: number): void {
+        this.totalScoreText.text(`Total score: ${totalScore}`);
+        this.totalScoreText.offsetX(this.totalScoreText.width() / 2); // keep it centered
         this.levelButtons.destroyChildren();
         for(let level = 1; level <= totalLevels; level++) {
             const index = level - 1;

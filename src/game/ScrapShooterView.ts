@@ -22,7 +22,6 @@ export class ScrapShooterView implements View {
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
-  private highScoreText!: Konva.Text;
   private waveText!: Konva.Text;
   private healthBar!: Konva.Group;
 
@@ -71,16 +70,6 @@ export class ScrapShooterView implements View {
       }),
     );
 
-    this.highScoreText = new Konva.Text({
-      x: WIDTH - 220,
-      y: 16,
-      width: 200,
-      align: 'right',
-      text: 'High score: –',
-      fontSize: 20,
-      fill: 'white',
-    });
-
     this.waveText = new Konva.Text({
       x: WIDTH / 2 - 100,
       y: 16,
@@ -95,7 +84,7 @@ export class ScrapShooterView implements View {
 
     this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.waveText, this.healthBar);
+    this.group.add(this.inputBox, this.inputText, this.waveText, this.healthBar);
     this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
   }
 
@@ -176,11 +165,6 @@ export class ScrapShooterView implements View {
 
   showTyped(typed: string): void {
     this.inputText.text(typed === '' ? 'type answer' : typed);
-    this.group.getLayer()?.batchDraw();
-  }
-
-  showHighScore(highScore: number): void {
-    this.highScoreText.text(`High score: ${highScore}`);
     this.group.getLayer()?.batchDraw();
   }
 

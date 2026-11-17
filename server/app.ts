@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
 import { highScoreRouter } from "./routes/highScore.js";
+import { minigame1PersonalBestRouter } from "./routes/minigame1PersonalBest.js";
+import { progressRouter } from "./routes/progress.js";
 import type { Store } from "./store/jsonStore.js";
 
 /** Builds the API. Tests call this with a temp-file store instead of starting a server. */
@@ -8,6 +10,8 @@ export function createApp(store: Store): Express {
   app.use(express.json());
 
   app.use("/api/high-score", highScoreRouter(store));
+  app.use("/api/minigame1/personal-best", minigame1PersonalBestRouter(store));
+  app.use("/api/progress", progressRouter(store));
 
   return app;
 }
