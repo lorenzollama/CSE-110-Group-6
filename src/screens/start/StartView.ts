@@ -16,27 +16,105 @@ export const STAGE_HEIGHT = 600;
 
 const TITLE_SIZE = 72;
 const TITLE_FONT = "Orbitron"; // loaded in index.html; Arial until it arrives
-const BUTTON_WIDTH = 340;
-const BUTTON_HEIGHT = 54;
-const BUTTON_GAP = 72; // from the top of one button to the top of the next
 const SOUND_BUTTON_SIZE = 48;
 const SOUND_BUTTON_MARGIN = 20; // gap between the sound button and the window's top-right corner
 
+// The game cards: a row of three under the title.
+const CARD_WIDTH = 200;
+const CARD_HEIGHT = 220;
+const CARD_GAP = 60; // between one card and the next
+const CARD_TOP = 250;
+const CARD_SHADOW = 6; // how far the solid shadow sits below and to the right of a card
+const CARD_FILL = "#0f172a";
+const CARD_HOVER_FILL = "#1e293b";
+const PIXEL = 8; // the size of one sprite pixel
+const SPRITE_TOP = 28; // from the card's top edge
+
 /**
- * The menu's buttons, top to bottom: the icon and label, whether it's the main (glowing)
- * button, and the screen it opens.
+ * Pixel-art sprites, one string per row; each letter is a color from the game's `colors`
+ * and "." is see-through.
  */
-const MENU_BUTTONS: { icon: string; label: string; main: boolean; screen: Screen }[] = [
-  { icon: "🚀", label: "SPACESHIP SHOOTER", main: true, screen: { type: "topic select" } },
-  { icon: "🧠", label: "MEMORY", main: false, screen: { type: "minigame1" } },
-  { icon: "❔", label: "UNKNOWN", main: false, screen: { type: "minigame2" } }, // name to be decided
+const ROCKET = [
+  ".....RR.....",
+  "....RRRR....",
+  "....WWWW....",
+  "...WWBBWW...",
+  "...WBBBBW...",
+  "...WWBBWW...",
+  "...WWWWWW...",
+  "..RWWWWWWR..",
+  ".RRWWWWWWRR.",
+  ".RR.WWWW.RR.",
+  "....OYYO....",
+  ".....OO.....",
+];
+const MEMORY_GRID = [
+  "LLL.DDD.DDD",
+  "LLL.DDD.DDD",
+  "LLL.DDD.DDD",
+  "...........",
+  "DDD.LLL.DDD",
+  "DDD.LLL.DDD",
+  "DDD.LLL.DDD",
+  "...........",
+  "DDD.DDD.LLL",
+  "DDD.DDD.LLL",
+  "DDD.DDD.LLL",
+];
+const TILES = [
+  "AAAAA.BBBBB",
+  "AAAAA.BBBBB",
+  "AAAAA.BBBBB",
+  "AAAAA.BBBBB",
+  "AAAAA.BBBBB",
+  "...........",
+  "CCCCC.DDDDD",
+  "CCCCC.DDDDD",
+  "CCCCC.DDDDD",
+  "CCCCC.DDDDD",
+  "CCCCC.DDDDD",
 ];
 
-/** How the two kinds of menu button look: the main one glows purple, the others are dark glass. */
-const BUTTON_LOOKS = {
-  main: { colors: ["#6366f1", "#a855f7"], outline: "#c4b5fd", glow: "#a78bfa", restingGlow: 18 },
-  other: { colors: ["rgba(15,23,42,0.75)", "rgba(30,41,59,0.75)"], outline: "#64748b", glow: "#38bdf8", restingGlow: 0 },
-};
+/**
+ * The menu's game cards, left to right: the label (\n for a second line), the sprite and its
+ * colors, the card's accent (outline) and shadow colors, and the screen it opens.
+ */
+const GAMES: {
+  label: string;
+  sprite: string[];
+  colors: Record<string, string>;
+  accent: string;
+  shade: string;
+  screen: Screen;
+}[] = [
+  {
+    label: "SPACESHIP\nSHOOTER",
+    sprite: ROCKET,
+    colors: { W: "#e2e8f0", R: "#ef4444", B: "#38bdf8", O: "#f97316", Y: "#facc15" },
+    accent: "#fb923c",
+    shade: "#7c2d12",
+    screen: { type: "topic select" },
+  },
+  {
+    label: "MEMORY",
+    sprite: MEMORY_GRID,
+    colors: { L: "#2dd4bf", D: "#334155" },
+    accent: "#2dd4bf",
+    shade: "#134e4a",
+    screen: { type: "minigame1" },
+  },
+  {
+    label: "POWERS",
+    sprite: TILES,
+    colors: { A: "#fbcfe8", B: "#f9a8d4", C: "#f472b6", D: "#db2777" }, // tiles getting "bigger" as they darken
+    accent: "#f472b6",
+    shade: "#831843",
+    screen: { type: "minigame2" },
+  },
+];
+
+/** The sound button's look: a dark glass circle. */
+const SOUND_LOOK = { fill: "rgba(15,23,42,0.75)", outline: "#64748b", glow: "#38bdf8", restingGlow: 0 };
 
 interface MenuButton {
   group: Konva.Group;
@@ -45,49 +123,98 @@ interface MenuButton {
   restingGlow: number;
 }
 
+interface GameCard {
+  group: Konva.Group;
+  label: Konva.Text;
+  /** Puts the card back to how it looks when the mouse isn't on it. */
+  reset: () => void;
+}
+
+/** Draws a pixel-art sprite (see ROCKET) as a group of squares, its top-left corner at 0, 0. */
+function makeSprite(rows: string[], colors: Record<string, string>): Konva.Group {
+  const sprite = new Konva.Group({ listening: false });
+  rows.forEach((row, y) => {
+    [...row].forEach((letter, x) => {
+      const fill = colors[letter];
+      if (!fill) return;
+      sprite.add(new Konva.Rect({ x: x * PIXEL, y: y * PIXEL, width: PIXEL, height: PIXEL, fill, perfectDrawEnabled: false }));
+    });
+  });
+  return sprite;
+}
+
 /**
- * A pill-shaped menu button with an icon. It grows a little and lights up while the mouse is
- * over it, and dips slightly when pressed. Clicking it only calls `onClick`.
+ * A game card: a flat panel with a colored outline, a solid shadow, the game's sprite and its
+ * name. On hover the card lifts off its shadow and the sprite bobs up; pressing pushes it down
+ * onto the shadow, like a physical button. Clicking it only calls `onClick`.
  */
-function makeMenuButton(centerX: number, y: number, text: string, main: boolean, onClick: () => void): MenuButton {
-  const look = main ? BUTTON_LOOKS.main : BUTTON_LOOKS.other;
-  // The group's origin is the button's center, so it grows from the middle when scaled.
-  const group = new Konva.Group({
-    x: centerX,
-    y: y + BUTTON_HEIGHT / 2,
-    offsetX: BUTTON_WIDTH / 2,
-    offsetY: BUTTON_HEIGHT / 2,
+function makeGameCard(x: number, y: number, game: (typeof GAMES)[number], onClick: () => void): GameCard {
+  const group = new Konva.Group({ x, y });
+  const shadow = new Konva.Rect({
+    x: CARD_SHADOW,
+    y: CARD_SHADOW,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    cornerRadius: 4,
+    fill: game.shade,
   });
+  const card = new Konva.Group(); // everything that moves when the card lifts or is pressed
   const body = new Konva.Rect({
-    width: BUTTON_WIDTH,
-    height: BUTTON_HEIGHT,
-    cornerRadius: BUTTON_HEIGHT / 2,
-    fillLinearGradientStartPoint: { x: 0, y: 0 },
-    fillLinearGradientEndPoint: { x: BUTTON_WIDTH, y: 0 },
-    fillLinearGradientColorStops: [0, look.colors[0], 1, look.colors[1]],
-    stroke: look.outline,
-    strokeWidth: 1.5,
-    shadowColor: look.glow,
-    shadowBlur: look.restingGlow,
-    shadowOpacity: 0.9,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    cornerRadius: 4,
+    fill: CARD_FILL,
+    stroke: game.accent,
+    strokeWidth: 3,
   });
+  const sprite = makeSprite(game.sprite, game.colors);
+  const spriteWidth = Math.max(...game.sprite.map((row) => row.length)) * PIXEL;
+  sprite.position({ x: Math.round((CARD_WIDTH - spriteWidth) / 2), y: SPRITE_TOP });
   const label = new Konva.Text({
-    width: BUTTON_WIDTH,
-    height: BUTTON_HEIGHT,
+    y: 140,
+    width: CARD_WIDTH,
+    height: 60,
     align: "center",
     verticalAlign: "middle",
-    wrap: "none",
-    text,
-    fontSize: 17,
+    text: game.label,
+    fontSize: 16,
+    lineHeight: 1.35,
     fontStyle: "bold",
     fontFamily: "Arial",
     letterSpacing: 2,
     fill: "white",
     listening: false,
   });
-  group.add(body, label);
-  addButtonEffects(group, body, look.restingGlow, 1.06, onClick);
-  return { group, body, label, restingGlow: look.restingGlow };
+  card.add(body, sprite, label);
+  group.add(shadow, card);
+
+  const move = (node: Konva.Node, to: { x?: number; y?: number }) =>
+    new Konva.Tween({ node, duration: 0.12, easing: Konva.Easings.EaseOut, ...to }).play();
+  const lift = () => {
+    move(card, { x: -2, y: -4 });
+    move(sprite, { y: SPRITE_TOP - 6 });
+    body.fill(CARD_HOVER_FILL);
+  };
+  const reset = () => {
+    card.position({ x: 0, y: 0 });
+    sprite.y(SPRITE_TOP);
+    body.fill(CARD_FILL);
+  };
+
+  group.on("mouseenter", () => {
+    document.body.style.cursor = "pointer";
+    lift();
+  });
+  group.on("mouseleave", () => {
+    document.body.style.cursor = "default";
+    move(card, { x: 0, y: 0 });
+    move(sprite, { y: SPRITE_TOP });
+    body.fill(CARD_FILL);
+  });
+  group.on("mousedown touchstart", () => move(card, { x: CARD_SHADOW - 2, y: CARD_SHADOW - 2 }));
+  group.on("mouseup touchend", lift);
+  group.on("click tap", onClick);
+  return { group, label, reset };
 }
 
 /**
@@ -95,7 +222,7 @@ function makeMenuButton(centerX: number, y: number, text: string, main: boolean,
  * StartView.showSoundOn) in a dark glass circle. Clicking it only calls `onClick`.
  */
 function makeSoundButton(onClick: () => void): MenuButton {
-  const look = BUTTON_LOOKS.other;
+  const look = SOUND_LOOK;
   const group = new Konva.Group(); // its origin is the circle's center
   const body = new Konva.Rect({
     x: -SOUND_BUTTON_SIZE / 2,
@@ -103,7 +230,7 @@ function makeSoundButton(onClick: () => void): MenuButton {
     width: SOUND_BUTTON_SIZE,
     height: SOUND_BUTTON_SIZE,
     cornerRadius: SOUND_BUTTON_SIZE / 2, // fully rounded: a circle
-    fill: look.colors[0],
+    fill: look.fill,
     stroke: look.outline,
     strokeWidth: 1.5,
     shadowColor: look.glow,
@@ -178,7 +305,7 @@ export class StartView implements View {
   private skyHeight = 0;
 
   private title: Konva.Text;
-  private buttons: MenuButton[] = [];
+  private cards: GameCard[] = [];
   private soundButton: MenuButton; // in the window's top-right corner (see fitSkyToWindow)
 
   // The click-to-start screen. Browsers only allow sound after the player clicks or presses a
@@ -241,12 +368,14 @@ export class StartView implements View {
     this.group.add(this.title);
     this.useTitleFontWhenLoaded();
 
-    // One button per game, stacked in the middle. Hidden until the player clicks to start.
-    MENU_BUTTONS.forEach(({ icon, label, main, screen }, i) => {
-      const button = makeMenuButton(STAGE_WIDTH / 2, 270 + i * BUTTON_GAP, `${icon}  ${label}`, main, () => onStartClick(screen));
-      button.group.visible(false);
-      this.buttons.push(button);
-      this.group.add(button.group);
+    // One card per game, in a centered row. Hidden until the player clicks to start.
+    const rowWidth = GAMES.length * CARD_WIDTH + (GAMES.length - 1) * CARD_GAP;
+    const rowLeft = (STAGE_WIDTH - rowWidth) / 2;
+    GAMES.forEach((game, i) => {
+      const card = makeGameCard(rowLeft + i * (CARD_WIDTH + CARD_GAP), CARD_TOP, game, () => onStartClick(game.screen));
+      card.group.visible(false);
+      this.cards.push(card);
+      this.group.add(card.group);
     });
 
     // Where the buttons will be: the click-to-start prompt. It pulses (see startAnimation).
@@ -283,12 +412,12 @@ export class StartView implements View {
     this.waitingForStart = false;
     this.stopWaitingForStart();
     new Konva.Tween({ node: this.prompt, opacity: 0, duration: 0.25, onFinish: () => this.prompt.visible(false) }).play();
-    // The buttons fade in one after another, 80 ms apart.
-    this.buttons.forEach((button, i) => {
-      button.group.opacity(0);
-      button.group.visible(true);
+    // The cards fade in left to right, 80 ms apart.
+    this.cards.forEach((card, i) => {
+      card.group.opacity(0);
+      card.group.visible(true);
       setTimeout(() => {
-        new Konva.Tween({ node: button.group, opacity: 1, duration: 0.35, easing: Konva.Easings.EaseOut }).play();
+        new Konva.Tween({ node: card.group, opacity: 1, duration: 0.35, easing: Konva.Easings.EaseOut }).play();
       }, 80 * i);
     });
     this.group.getLayer()?.batchDraw();
@@ -307,13 +436,12 @@ export class StartView implements View {
     this.animation?.stop(); // no need to animate a sky nobody can see
     this.stopRefittingSky();
     this.stopWaitingForStart();
-    // A clicked button is hidden while the mouse is still on it, so its "mouse left" never comes:
-    // put every button and the cursor back to normal for next time.
+    // A clicked card is hidden while the mouse is still on it, so its "mouse left" never comes:
+    // put every card, the sound button and the cursor back to normal for next time.
     document.body.style.cursor = "default";
-    for (const button of [...this.buttons, this.soundButton]) {
-      button.group.scale({ x: 1, y: 1 });
-      button.body.shadowBlur(button.restingGlow);
-    }
+    for (const card of this.cards) card.reset();
+    this.soundButton.group.scale({ x: 1, y: 1 });
+    this.soundButton.body.shadowBlur(this.soundButton.restingGlow);
     this.group.visible(false);
     this.group.getLayer()?.batchDraw();
   }
@@ -467,7 +595,7 @@ export class StartView implements View {
       .then((fonts) => {
         if (fonts.length === 0) return;
         this.title.fontFamily(TITLE_FONT);
-        for (const button of this.buttons) button.label.fontFamily(TITLE_FONT);
+        for (const card of this.cards) card.label.fontFamily(TITLE_FONT);
         this.prompt.fontFamily(TITLE_FONT);
         this.group.getLayer()?.batchDraw();
       })
