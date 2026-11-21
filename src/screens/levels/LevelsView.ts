@@ -2,6 +2,7 @@ import Konva from "konva";
 import type {View} from "../../types";
 import {makeButton} from "../../popups/PopupView";
 import {STAGE_WIDTH} from "../start/StartView";
+import {sounds} from "../../audio/sounds";
 
 export class LevelsView implements View {
     private group = new Konva.Group({visible: false});
@@ -86,7 +87,10 @@ export class LevelsView implements View {
             }));
 
             if(level <= unlockedLevels) {
-                button.on("click", () => this.onLevelClick(level));
+                button.on("click", () => {
+                    sounds.playClick(); // the same blip as every other button
+                    this.onLevelClick(level);
+                });
                 button.on("mouseenter", () => {
                     document.body.style.cursor = "pointer";
                 });

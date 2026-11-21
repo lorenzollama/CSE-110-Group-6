@@ -1,5 +1,6 @@
 import Konva from "konva";
 import type { LevelCompleteInfo, WrongAnswerInfo , GameOverInfo} from "./PopupModel";
+import { sounds } from "../audio/sounds";
 
 /** What the level-complete popup's two buttons do. */
 export interface LevelCompleteActions {
@@ -142,7 +143,10 @@ export function makeButton(
   group.add(new Konva.Text({
     width, y: 13, text: label, fontSize: 18, fill: "white", align: "center",
   }));
-  group.on("click tap", onClick);
+  group.on("click tap", () => {
+    sounds.playClick(); // every button blips (unless sound is muted)
+    onClick();
+  });
   group.on("mouseenter", () => { document.body.style.cursor = "pointer"; });
   group.on("mouseleave", () => { document.body.style.cursor = "default"; });
   return group;
