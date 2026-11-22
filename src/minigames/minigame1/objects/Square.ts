@@ -114,8 +114,10 @@ export class Square {
 
 		this.setFill("lightgreen");
 
-		this.blinkAudio.currentTime = 0;
-		this.blinkAudio.play();
+		if (playAudio) {
+			this.blinkAudio.currentTime = 0;
+			this.blinkAudio.play();
+		}
 
 		setTimeout(() => {
 			this.setFill(originalFill as string);

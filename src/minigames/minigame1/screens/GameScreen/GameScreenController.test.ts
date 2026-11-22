@@ -23,11 +23,31 @@ const viewHarness = vi.hoisted(() => {
     updateScore: vi.fn((score: number) => scores.push(score)),
     updateLives: vi.fn((value: number) => lives.push(value)),
     updateRound: vi.fn((round: number) => rounds.push(round)),
-    blink: vi.fn((_sequence: Coordinates[], callback: () => void) => {
+    blink: vi.fn((_sequence: Coordinates[], _playAudio: boolean, callback: () => void) => {
       blinkCallbacks.push(callback);
     }),
   };
 });
+
+const audioHarness = vi.hoisted(() => ({
+  instances: [] as Array<{
+    src: string;
+    currentTime: number;
+    play: ReturnType<typeof vi.fn>;
+  }>,
+}));
+
+function getAudio(filename: string) {
+  const audio = audioHarness.instances.find((audio) =>
+    audio.src.endsWith(filename)
+  );
+
+  if (!audio) {
+    throw new Error(`Audio ${filename} was not initialized`);
+  }
+
+  return audio;
+}
 
 vi.mock("./GameScreenView.ts", () => ({
   GameScreenView: class {
@@ -55,6 +75,17 @@ vi.mock("./GameScreenView.ts", () => ({
 import { GameScreenController } from "./GameScreenController.ts";
 import { MAX_LIVES } from "../../constants.ts";
 
+class MockAudio {
+    src: string;
+    currentTime = 0;
+    play = vi.fn().mockResolvedValue(undefined);
+
+    constructor(src: string) {
+        this.src = src;
+        audioHarness.instances.push(this);
+    }
+}
+
 function makeController() {
   const screenSwitcher = { switchToScreen: vi.fn() };
   const stage = {} as Stage;
@@ -73,21 +104,26 @@ function select(row: number, col: number) {
   viewHarness.selectionHandler(row, col);
 }
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.restoreAllMocks();
-});
-
 beforeEach(() => {
+  audioHarness.instances.splice(0);
+  vi.stubGlobal("Audio", MockAudio);
+
   viewHarness.selectionHandler = undefined;
   viewHarness.blinkCallbacks.splice(0);
   viewHarness.statusMessages.splice(0);
   viewHarness.scores.splice(0);
   viewHarness.lives.splice(0);
   viewHarness.rounds.splice(0);
+
   vi.clearAllMocks();
   vi.useFakeTimers();
   vi.spyOn(Math, "random").mockReturnValue(0.99);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 // user story 5
@@ -172,5 +208,72 @@ describe("GameScreenController game-over and restart properly", () => {
     newPlayback!();
     select(2, 2);
     expect(viewHarness.scores.at(-1)).toBe(1);
+  });
+});
+
+// test audio
+describe("GameScreenController audio playback", () => {
+  it("plays correct.mp3 when the player selects the correct square", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const correctAudio = getAudio("correct.mp3");
+
+    select(2, 2);
+
+    expect(correctAudio.play).toHaveBeenCalledTimes(1);
+    expect(correctAudio.currentTime).toBe(0);
+  });
+
+  it("plays incorrect.mp3 when the player selects the wrong square", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const incorrectAudio = getAudio("incorrect.mp3");
+
+    select(0, 0);
+
+    expect(incorrectAudio.play).toHaveBeenCalledTimes(1);
+    expect(incorrectAudio.currentTime).toBe(0);
+  });
+
+  it("plays round_complete.mp3 after completing a round", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const roundCompleteAudio = getAudio("round_complete.mp3");
+
+    select(2, 2);
+    vi.advanceTimersByTime(1000);
+
+    expect(roundCompleteAudio.play).toHaveBeenCalledTimes(1);
+    expect(roundCompleteAudio.currentTime).toBe(0);
+  });
+
+  it("does not play incorrect.mp3 after game over", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const incorrectAudio = getAudio("incorrect.mp3");
+
+    for (let life = MAX_LIVES; life > 0; life--) {
+      select(0, 0);
+
+      if (life > 1) {
+        playPendingSequence();
+        vi.advanceTimersByTime(500);
+        playPendingSequence();
+      }
+    }
+
+    expect(incorrectAudio.play).toHaveBeenCalledTimes(MAX_LIVES - 1);
   });
 });
