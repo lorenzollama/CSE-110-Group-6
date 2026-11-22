@@ -14,6 +14,8 @@ export class Square {
 	private parent: Konva.Container;
 	private selectionFeedbackTimer?: ReturnType<typeof setTimeout>;
 
+	private blinkAudio: HTMLAudioElement;
+
 	constructor(
 		parent: Konva.Container,
 		options: SquareOptions = {}
@@ -56,6 +58,8 @@ export class Square {
 
 		this.parent.add(this.rect);
 		this.parent.getLayer()?.batchDraw();
+
+		this.blinkAudio = new Audio('/minigame1/blink.mp3')
 	}
 
 	// change fill folor
@@ -105,14 +109,17 @@ export class Square {
 	}
 
 	// blink
-	blink(onComplete?: () => void): void {
+	blink(onComplete?: () => void, playAudio: boolean = true, blinkDuration: number = 1): void {
 		const originalFill = this.rect.fill();
 
 		this.setFill("lightgreen");
 
+		this.blinkAudio.currentTime = 0;
+		this.blinkAudio.play();
+
 		setTimeout(() => {
-		this.setFill(originalFill as string);
-		onComplete?.();
-		}, 1000); // 1000ms = 1s
+			this.setFill(originalFill as string);
+			onComplete?.();
+		}, blinkDuration * 1000); // 1000ms = 1s
 	}
 }

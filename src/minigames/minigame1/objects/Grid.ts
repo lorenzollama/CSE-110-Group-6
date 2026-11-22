@@ -96,8 +96,13 @@ export class Grid {
 	 * @param coordinates the ordered light sequence to display
 	 * @param onComplete the optional callback invoked after playback finishes
 	 */
-	blink(coordinates: Coordinates[], onComplete?: () => void): void {
+	blink(coordinates: Coordinates[], playAudio: boolean = true, onComplete?: () => void): void {
 		let index = 0;
+		let blinkDuration = 1;
+
+		if (coordinates.length == 1 && playAudio == false) {
+			blinkDuration = 2
+		}
 
 		// recursive functions
 		const blinkNext = () => {
@@ -114,7 +119,7 @@ export class Grid {
 				return;
 			}
 
-			square.blink(blinkNext);
+			square.blink(blinkNext, playAudio, blinkDuration);
 		};
 
 		blinkNext();
