@@ -88,3 +88,10 @@ describe("tileColors for blocked tiles", () => {
     expect(tileColors(8, 2, []).fill).not.toBe("#9e9e9e");
   });
 });
+
+describe("tileColors when the game is over", () => {
+  it("greys out every tile", () => {
+    expect(tileColors(8, 2, [], true).fill).toBe("#9e9e9e");
+    expect(tileColors(2048, 2, [], true).fill).toBe("#9e9e9e");
+  });
+});

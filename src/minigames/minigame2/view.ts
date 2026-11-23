@@ -35,14 +35,10 @@ const DISPLAY_HEIGHT = BOARD_SIZE;
 const DISPLAY_PADDING = 16; // space between the edge of the screen and its text
 const PAGE_Y = DISPLAY_Y + 100; // where the page starts, under the power level and base
 
-// Game over popup: "No moves left" with the New game button under it,
-// centered as one block over the middle of the board
-const GAME_OVER_TEXT_SIZE = 40;
+// The New game button, on the display when the game is over
 const NEW_GAME_BUTTON_WIDTH = 180;
 const NEW_GAME_BUTTON_HEIGHT = 56;
-const GAME_OVER_SPACING = 50; // between the text and the button
-const GAME_OVER_TOP =
-  BOARD_Y + (BOARD_SIZE - (GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING + NEW_GAME_BUTTON_HEIGHT)) / 2;
+const BUTTON_COLOR = "#2563eb"; // blue, so it stands out on the dark screen
 
 // Each base gets its own hue (degrees on the color wheel)
 const BASE_HUES: Record<number, number> = {
@@ -75,8 +71,8 @@ export class Minigame2View implements View {
   private scoreText: Konva.Text;
   private baseText: Konva.Text;
   private newGameButton: Konva.Group;
-  private gameOverPopup: Konva.Group;
-  private questionPopup: Konva.Group;
+  private gameOverPage: Konva.Group;
+  private questionPage: Konva.Group;
   private questionText: Konva.Text;
   private answerText: Konva.Text;
 
@@ -101,31 +97,31 @@ export class Minigame2View implements View {
     }));
 
     this.newGameButton = createNewGameButton();
-    this.gameOverPopup = createGameOverPopup(this.newGameButton);
-    this.group.add(this.gameOverPopup);
+    this.gameOverPage = createGameOverPage(this.newGameButton);
+    this.group.add(this.gameOverPage);
 
-    this.questionText = createPopupText(BOARD_Y + 110, 48, "bold");
-    this.answerText = createPopupText(BOARD_Y + 200, 40, "normal");
-    this.questionPopup = createQuestionPopup(this.questionText, this.answerText);
-    this.group.add(this.questionPopup);
+    this.questionText = createDisplayText(PAGE_Y + 20, 48, "bold");
+    this.answerText = createDisplayText(PAGE_Y + 90, 40, "normal");
+    this.questionPage = createQuestionPage(this.questionText, this.answerText);
+    this.group.add(this.questionPage);
   }
 
   /**
    * Draws a game state on the screen
    */
   draw(state: GameState): void {
-    this.drawTiles(state);
+    const page = displayPage(state);
+    this.drawTiles(state, page === "gameOver");
     this.scoreText.text(`Power level: ${state.score}`);
     this.baseText.text(`Base: ${state.base}`);
     this.questionText.text(state.question ?? "");
-    this.questionPopup.visible(state.question !== null);
-    // the board can be full while a question is up, so the question goes first
-    this.gameOverPopup.visible(state.status === "over" && state.question === null);
+    this.questionPage.visible(page === "question");
+    this.gameOverPage.visible(page === "gameOver");
     this.group.getLayer()?.batchDraw();
   }
 
   /**
-   * Shows what the player has typed so far in the question popup
+   * Shows what the player has typed so far on the display
    */
   drawAnswer(typed: string): void {
     this.answerText.text(`${typed}_`);
@@ -158,8 +154,9 @@ export class Minigame2View implements View {
     }
   }
 
-  // Removes the old tiles, then draws each non-empty cell as a colored tile with its number
-  private drawTiles(state: GameState): void {
+  // Removes the old tiles, then draws each non-empty cell as a colored tile with its number.
+  // When the game is over every tile is grey.
+  private drawTiles(state: GameState, gameOver: boolean): void {
     const { board, base, blocked } = state;
     this.tiles.destroyChildren();
 
@@ -171,7 +168,7 @@ export class Minigame2View implements View {
         }
 
         const { x, y } = cellPosition(row, col);
-        const colors = tileColors(value, base, blocked);
+        const colors = tileColors(value, base, blocked, gameOver);
         this.tiles.add(new Konva.Rect({
           x,
           y,
@@ -212,10 +209,28 @@ export class Minigame2View implements View {
   }
 }
 
-// Blocked tiles are grey. Otherwise the tile's color comes from the base, its shade from
-// its power, and the number is white on dark tiles
-export function tileColors(value: number, base: number, blocked: number[] = []): { fill: string; text: string } {
-  if (blocked.includes(value)) {
+// Picks what the display shows under the power level and base: the question while one
+// is up, then "No moves left" when the game is over, and otherwise the instructions
+function displayPage(state: GameState): "question" | "gameOver" | "instructions" {
+  // the board can be full while a question is up, so the question goes first
+  if (state.question !== null) {
+    return "question";
+  }
+  if (state.status === "over") {
+    return "gameOver";
+  }
+  return "instructions";
+}
+
+// Blocked tiles are grey, and so is every tile when the game is over. Otherwise the tile's
+// color comes from the base, its shade from its power, and the number is white on dark tiles
+export function tileColors(
+  value: number,
+  base: number,
+  blocked: number[] = [],
+  gameOver: boolean = false,
+): { fill: string; text: string } {
+  if (gameOver || blocked.includes(value)) {
     return { fill: BLOCKED_TILE_COLOR, text: TEXT_COLOR };
   }
   // round it because the log can come out a tiny bit off, like 4.999999999999999 for 9^5
@@ -253,15 +268,15 @@ export function tileFontSize(value: number, tileSize: number = TILE_SIZE): numbe
   return Math.floor(Math.min(heightLimit, widthLimit));
 }
 
-// A dark rounded button that says "New game"
+// A blue rounded button that says "New game", on the display
 function createNewGameButton(): Konva.Group {
   const width = NEW_GAME_BUTTON_WIDTH;
   const height = NEW_GAME_BUTTON_HEIGHT;
   const button = new Konva.Group({
-    x: BOARD_X + (BOARD_SIZE - width) / 2,
-    y: GAME_OVER_TOP + GAME_OVER_TEXT_SIZE + GAME_OVER_SPACING,
+    x: DISPLAY_X + (DISPLAY_WIDTH - width) / 2,
+    y: PAGE_Y + 110,
   });
-  button.add(new Konva.Rect({ width, height, fill: TEXT_COLOR, cornerRadius: 8 }));
+  button.add(new Konva.Rect({ width, height, fill: BUTTON_COLOR, cornerRadius: 8 }));
   button.add(new Konva.Text({
     width,
     height,
@@ -275,31 +290,13 @@ function createNewGameButton(): Konva.Group {
   return button;
 }
 
-// Covers the board with "No moves left" and the New game button. It starts hidden.
-function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
-  const popup = new Konva.Group({ visible: false });
-  popup.add(new Konva.Rect({
-    x: BOARD_X,
-    y: BOARD_Y,
-    width: BOARD_SIZE,
-    height: BOARD_SIZE,
-    fill: "white",
-    opacity: 0.8,
-    cornerRadius: 8,
-  }));
-  popup.add(new Konva.Text({
-    x: BOARD_X,
-    y: GAME_OVER_TOP,
-    width: BOARD_SIZE,
-    text: "No moves left",
-    fontSize: GAME_OVER_TEXT_SIZE,
-    fontStyle: "bold",
-    fontFamily: "Arial",
-    fill: TEXT_COLOR,
-    align: "center",
-  }));
-  popup.add(newGameButton);
-  return popup;
+// "No moves left" and the New game button, on the display. It starts hidden.
+function createGameOverPage(newGameButton: Konva.Group): Konva.Group {
+  const page = new Konva.Group({ visible: false });
+  const text = createDisplayText(PAGE_Y + 40, 32, "bold");
+  text.text("No moves left");
+  page.add(text, newGameButton);
+  return page;
 }
 
 // A dark screen with a light frame around it, so it looks built into the wall
@@ -333,35 +330,11 @@ function createDisplayText(y: number, fontSize: number, fontStyle: string): Konv
   });
 }
 
-// A line of centered text across the board, used in the question popup
-function createPopupText(y: number, fontSize: number, fontStyle: string): Konva.Text {
-  return new Konva.Text({
-    x: BOARD_X,
-    y,
-    width: BOARD_SIZE,
-    text: "",
-    fontSize,
-    fontStyle,
-    fontFamily: "Arial",
-    fill: TEXT_COLOR,
-    align: "center",
-  });
-}
-
-// Covers the board with the question, the typed answer and how to send it. It starts hidden.
-function createQuestionPopup(questionText: Konva.Text, answerText: Konva.Text): Konva.Group {
-  const popup = new Konva.Group({ visible: false });
-  popup.add(new Konva.Rect({
-    x: BOARD_X,
-    y: BOARD_Y,
-    width: BOARD_SIZE,
-    height: BOARD_SIZE,
-    fill: "white",
-    opacity: 0.9,
-    cornerRadius: 8,
-  }));
-  const hint = createPopupText(BOARD_Y + 280, 20, "normal");
+// The question, the typed answer and how to send it, on the display. It starts hidden.
+function createQuestionPage(questionText: Konva.Text, answerText: Konva.Text): Konva.Group {
+  const page = new Konva.Group({ visible: false });
+  const hint = createDisplayText(PAGE_Y + 160, 18, "normal");
   hint.text("Type the answer, then press Enter");
-  popup.add(questionText, answerText, hint);
-  return popup;
+  page.add(questionText, answerText, hint);
+  return page;
 }
