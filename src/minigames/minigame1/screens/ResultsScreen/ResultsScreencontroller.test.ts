@@ -14,14 +14,20 @@ const audioHarness = vi.hoisted(() => ({
 const viewHarness = vi.hoisted(() => ({
   show: vi.fn(),
   updateFinalScore: vi.fn(),
+  onPlayAgain: null as (() => void) | null,
+  onReturnToMenu: null as (() => void) | null,
 }));
 
 vi.mock("./ResultsScreenView.ts", () => ({
   ResultsScreenView: class {
     constructor(
       _stage: Stage,
-      _callback: () => void
-    ) {}
+      onPlayAgain: () => void,
+      onReturnToMenu: () => void
+    ) {
+      viewHarness.onPlayAgain = onPlayAgain;
+      viewHarness.onReturnToMenu = onReturnToMenu;
+    }
 
     show = viewHarness.show;
     updateFinalScore = viewHarness.updateFinalScore;
@@ -41,13 +47,15 @@ function makeController() {
   } as unknown as ScreenSwitcher;
 
   const stage = {} as Stage;
+  const onReturnToMenu = vi.fn();
 
   const controller = new ResultsScreenController(
     screenSwitcher,
-    stage
+    stage,
+    onReturnToMenu
   );
 
-  return { controller, screenSwitcher };
+  return { controller, screenSwitcher, onReturnToMenu };
 }
 
 function getAudio(filename: string) {
@@ -126,5 +134,35 @@ describe("ResultsScreenController audio playback", () => {
       .toHaveBeenCalledWith(25);
 
     expect(viewHarness.show).toHaveBeenCalledTimes(1);
+  });
+});
+
+// User Story 7
+describe("User Story 7 - Results navigation", () => {
+  // User Story 7 - Test 1:
+  // Play Again opens Minigame 1's start menu without leaving the minigame
+  it("opens the minigame menu when Play Again is clicked", () => {
+    const { screenSwitcher, onReturnToMenu } = makeController();
+
+    // Simulate the callback provided to the Play Again button.
+    viewHarness.onPlayAgain!();
+
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledOnce();
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledWith({
+      type: "menu",
+    });
+    expect(onReturnToMenu).not.toHaveBeenCalled();
+  });
+
+  // User Story 7 - Test 2:
+  // Return to Menu calls the shared-menu callback instead of opening the minigame menu
+  it("calls the shared-menu callback when Return to Menu is clicked", () => {
+    const { screenSwitcher, onReturnToMenu } = makeController();
+
+    // Simulate the callback provided to the Return to Menu button.
+    viewHarness.onReturnToMenu!();
+
+    expect(onReturnToMenu).toHaveBeenCalledOnce();
+    expect(screenSwitcher.switchToScreen).not.toHaveBeenCalled();
   });
 });

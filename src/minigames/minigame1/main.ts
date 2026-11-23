@@ -19,10 +19,11 @@ export class Minigame1Controller implements ScreenSwitcher {
 	constructor(
 		stage: Konva.Stage,
 		private layer: Konva.Layer,
+		onReturnToMenu: () => void
 	) {
-		this.menuController = new MenuScreenController(this, stage);
+		this.menuController = new MenuScreenController(this, stage, onReturnToMenu);
 		this.gameController = new GameScreenController(this, stage);
-		this.resultsController = new ResultsScreenController(this, stage);
+		this.resultsController = new ResultsScreenController(this, stage, onReturnToMenu);
 
 		// Add Minigame 1's screens to the shared layer.
 		this.layer.add(this.menuController.getView().getGroup());
