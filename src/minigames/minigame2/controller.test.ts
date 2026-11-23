@@ -16,6 +16,7 @@ const STATE_AFTER_MOVE: GameState = {
   base: 2,
   blocked: [],
   question: null,
+  feedback: null,
 };
 
 // Builds a controller with a fake game and a fake view.

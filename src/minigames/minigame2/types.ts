@@ -21,6 +21,8 @@ export interface GameState {
   blocked: number[];
   /** The text to show (like "3^4" or "√81"), or null when there is no question */
   question: string | null;
+  /** What happened on the last answer (like "Correct! 2^5 = 32."), or null before the first answer of a game */
+  feedback: string | null;
 }
 
 /** What the frontend needs from the back end's Game class */
