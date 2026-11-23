@@ -1,96 +1,151 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
 import type { Stage } from "konva/lib/Stage";
+import {
+	SpaceBackdrop,
+	STAGE_WIDTH,
+	STAGE_HEIGHT,
+	makeTitle,
+	useTitleFont,
+} from "../../../../screens/shared/space.ts";
+import {
+	darkLook,
+	makeBackButton,
+	makePressable,
+	type Pressable,
+} from "../../../../screens/shared/pressable.ts";
 
 /**
  * MenuScreenView - Renders the menu screen
  */
 export class MenuScreenView implements View {
 	private group: Konva.Group;
-	private background: Konva.Rect;
+	private content: Konva.Group;
+	private stage: Stage;
+	private sky: SpaceBackdrop;
 	private personalBestText: Konva.Text;
+	private startButton: Pressable;
+	private backButton: Pressable;
 
-	constructor(stage: Stage, onStartClick: () => void) {
-		this.group = new Konva.Group({ visible: true });
-		
-		this.background = new Konva.Rect({
-			x: 0,
-			y: 0,
-			width: stage.width(),
-			height: stage.height(),
-			fill: "black",
-			listening: false,
-		});
-		this.group.add(this.background);
+	constructor(stage: Stage, onStartClick: () => void, onBackClick: () => void) {
+		this.stage = stage;
+		this.group = new Konva.Group({ visible: false });
+		this.content = new Konva.Group();
 
-		// Title text
-		const title = new Konva.Text({
-			x: stage.width() / 2,
-			y: 150,
-			text: "Minigame 1",
-			fontSize: 64,
-			fontFamily: "Arial",
-			stroke: "white",
-			strokeWidth: 2,
-			align: "center",
-		});
-		// Center the text using offsetX
-		title.offsetX(title.width() / 2);
-		this.group.add(title);
+		//placed the shared background behind the menu content
+		this.sky = new SpaceBackdrop(undefined, () => this.centerLayout());
+		this.group.add(this.sky.group);
+
+		const title = makeTitle("ALIEN SIGNAL\nMEMORY", 110, 44);
+		title.lineHeight(1.25);
+		title.shadowColor("#2dd4bf");
+		this.content.add(title);
 
 		this.personalBestText = new Konva.Text({
-			x: stage.width() / 2,
 			y: 235,
+			width: STAGE_WIDTH,
 			text: "No personal best yet",
+			align: "center",
 			fontSize: 22,
 			fontFamily: "Arial",
+			fill: "#99f6e4",
+			listening: false,
+		});
+		this.content.add(this.personalBestText);
+
+		const instructions = new Konva.Text({
+			x: 80,
+			y: 300,
+			width: STAGE_WIDTH - 160,
+			text: "Watch the lights, then repeat their order.\nEach completed round adds one signal.",
+			align: "center",
+			fontSize: 20,
+			lineHeight: 1.5,
+			fontFamily: "Arial",
+			fill: "#e2e8f0",
+			listening: false,
+		});
+		this.content.add(instructions);
+
+		this.startButton = makePressable(
+			260,
+			64,
+			darkLook("#2dd4bf", "#134e4e"),
+			onStartClick
+		);
+		this.startButton.group.position({
+			x: (STAGE_WIDTH - 260) / 2,
+			y: 400,
+		});
+
+		const startLabel = new Konva.Text({
+			width: 260,
+			height: 64,
+			text: "START GAME",
+			align: "center",
+			verticalAlign: "middle",
+			fontSize: 22,
+			fontStyle: "bold",
+			fontFamily: "Arial",
+			letterSpacing: 2,
 			fill: "white",
 			listening: false,
 		});
-		this.personalBestText.offsetX(this.personalBestText.width() / 2);
-		this.group.add(this.personalBestText);
+		this.startButton.face.add(startLabel);
+		this.content.add(this.startButton.group);
+		this.group.add(this.content);
 
-		const startButtonGroup = new Konva.Group();
-		const startButton = new Konva.Rect({
-			x: stage.width() / 2 - 100,
-			y: 300,
-			width: 200,
-			height: 60,
-			fill: "green",
-			cornerRadius: 10,
-			stroke: "darkgreen",
-			strokeWidth: 3,
-		});
-		const startText = new Konva.Text({
-			x: stage.width() / 2,
-			y: 315,
-			text: "Start Game",
-			fontSize: 24,
-			fontFamily: "Arial",
-			fill: "white",
-			align: "center",
-		});
-		startText.offsetX(startText.width() / 2);
-		startButtonGroup.add(startButton);
-		startButtonGroup.add(startText);
-		startButtonGroup.on("click", onStartClick);
-		this.group.add(startButtonGroup);
+		//keep Back in the upper-left corner, outside the centered content
+		const back = makeBackButton(onBackClick);
+		this.backButton = back.button;
+		this.backButton.group.position({ x: 20, y: 20});
+		this.group.add(this.backButton.group);
+
+		useTitleFont(
+			[title, startLabel, back.label],
+			() => this.group.getLayer()?.batchDraw()
+		);
+		this.centerLayout();
 	}
 
 	/**
-	 * Show the screen
+	 * Centers the menu and scales it to fit smaller windows
+	 */
+	private centerLayout(): void {
+		const scale = Math.min(
+			1,
+			this.stage.width() / STAGE_WIDTH,
+			this.stage.height() / STAGE_HEIGHT
+		);
+		this.content.scale({ x: scale, y: scale });
+		this.content.position({
+			x: (this.stage.width() - STAGE_WIDTH * scale) / 2,
+			y: (this.stage.height() - STAGE_HEIGHT * scale) / 2,
+		});
+		this.group.getLayer()?.batchDraw();
+	}
+
+	/**
+	 * Show the screen and starts its background animation
 	 */
 	show(): void {
-		this.group.visible(true);
-		this.group.getLayer()?.draw();
+		if (!this.group.visible()) {
+			this.group.visible(true);
+			this.sky.start();
+		}
+		this.centerLayout();
 	}
 
 	/**
-	 * Hide the screen
+	 * Hide the menu and resets its background and button effects
 	 */
 	hide(): void {
+		this.sky.stop();
+		this.startButton.reset();
+		this.backButton.reset();
+		document.body.style.cursor = "default";
 		this.group.visible(false);
-		this.group.getLayer()?.draw();
+		this.group.getLayer()?.batchDraw();
 	}
 
 	getGroup(): Konva.Group {
@@ -105,9 +160,9 @@ export class MenuScreenView implements View {
 			this.personalBestText.text("No personal best yet");
 		}
 		else {
-			const unit = rounds === 1 ? "round" : "round";
+			const unit = rounds === 1 ? "round" : "rounds";
 			this.personalBestText.text(`Personal best: ${rounds} ${unit}`);
 		}
-		this.personalBestText.offsetX(this.personalBestText.width() / 2);
+		this.group.getLayer()?.batchDraw();
 	}
 }

@@ -258,6 +258,14 @@ describe("Square audio playback", () => {
     let parent: Konva.Group;
     let square: Square;
 
+    afterEach(() => {
+        square?.destroy();
+        parent?.destroy();
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
     it("creates the blink audio", () => {
         parent = new Konva.Group();
         square = new Square(parent);
@@ -301,5 +309,97 @@ describe("Square audio playback", () => {
         square.blink();
 
         expect(audio.currentTime).toBe(0);
+    });
+});
+
+describe("User Story 7 - Square visual states", () => {
+    let parent: Konva.Group;
+    let square: Square;
+    let rect: Konva.Rect;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent, { fill: "#334155" });
+        rect = parent.getChildren()[0] as Konva.Rect;
+    });
+
+    afterEach(() => {
+        square.destroy();
+        parent.destroy();
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    // User Story 7 - Test 1:
+    // hovering turns the square gray and leaving restores its idle color
+    it("shows gray on hover and restores idle when the pointer leaves", () => {
+        rect.fire("mouseenter");
+        expect(square.getFill()).toBe("gray");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 2:
+    // moving the pointer over or away from a square does not interrupt its green flash
+    it("keeps the playback flash green when the pointer enters or leaves", () => {
+        square.blink();
+
+        rect.fire("mouseenter");
+        expect(square.getFill()).toBe("lightgreen");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("lightgreen");
+
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 3:
+    // after a flash ends the square returns to gray if the pointer is still over it
+    it("restores gray after playback when the pointer remains over the square", () => {
+        rect.fire("mouseenter");
+        square.blink();
+
+        expect(square.getFill()).toBe("lightgreen");
+
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe("gray");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 4:
+    // player selections use a yellow outline while playback uses a green fill
+    it("distinguishes player selection from the green playback flash", () => {
+        square.showSelectionFeedback();
+
+        expect(square.getFill()).toBe("#334155");
+        expect(rect.stroke()).toBe("#ffd54f");
+
+        vi.advanceTimersByTime(200);
+        expect(rect.stroke()).toBe("");
+
+        square.blink();
+        expect(square.getFill()).toBe("lightgreen");
+        expect(rect.stroke()).toBe("");
+    });
+
+    // User Story 7 - Test 5:
+    // destroying a square cancels its flash timer and prevents its completion callback
+    it("cancels pending playback when the square is destroyed", () => {
+        const onComplete = vi.fn();
+
+        square.blink(onComplete);
+        vi.advanceTimersByTime(500);
+
+        square.destroy();
+        vi.advanceTimersByTime(1000);
+
+        expect(onComplete).not.toHaveBeenCalled();
     });
 });

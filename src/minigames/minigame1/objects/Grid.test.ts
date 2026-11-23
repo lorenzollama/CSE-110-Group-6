@@ -113,9 +113,15 @@ describe("Grid blinking", () => {
     let parent: Konva.Group;
     let grid: Grid;
 
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
     afterEach(() => {
         grid?.destroy();
         parent?.destroy();
+        vi.clearAllTimers();
+        vi.useRealTimers();
         vi.restoreAllMocks();
     });
 
@@ -150,6 +156,7 @@ describe("Grid blinking", () => {
             true,
             onComplete
         );
+        vi.runAllTimers();
 
         expect(blinkSpy).toHaveBeenCalledOnce();
         expect(secondSpy).toHaveBeenCalledOnce();
@@ -198,12 +205,22 @@ describe("Grid blinking", () => {
 
         callbacks.shift()!();
 
+        //the second square must wait through the full 200 ms gap
+        vi.advanceTimersByTime(199);
+        expect(secondSpy).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(1);
         expect(secondSpy).toHaveBeenCalledOnce();
         expect(thirdSpy).not.toHaveBeenCalled();
         expect(onComplete).not.toHaveBeenCalled();
 
         callbacks.shift()!();
 
+        //the third square must also wait through the full gap
+        vi.advanceTimersByTime(199);
+        expect(thirdSpy).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(1);
         expect(thirdSpy).toHaveBeenCalledOnce();
         expect(onComplete).not.toHaveBeenCalled();
 
@@ -245,8 +262,57 @@ describe("Grid blinking", () => {
             true,
             onComplete
         );
+        vi.runAllTimers();
 
         expect(blinkSpy).toHaveBeenCalledOnce();
         expect(onComplete).toHaveBeenCalledOnce();
     });
+
+
+    // User Story 7 - Test 1:
+    // Repeated signals on the same square have a visible idle gap
+    it("returns to idle between consecutive flashes on the same square", () => {
+        parent = new Konva.Group();
+        grid = new Grid(parent);
+
+        const square = grid.getSquare(0, 0)!;
+        const idleFill = square.getFill();
+        const onComplete = vi.fn();
+
+        // Use the actual square playback with fake timers.
+        grid.blink(
+            [
+                { row: 0, col: 0 },
+                { row: 0, col: 0 },
+            ],
+            true,
+            onComplete
+        );
+
+        expect(square.getFill()).toBe("lightgreen");
+
+        //the first flash ends after one second
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe(idleFill);
+        expect(onComplete).not.toHaveBeenCalled();
+
+        //the square remains idle throughout the gap.
+        vi.advanceTimersByTime(199);
+        expect(square.getFill()).toBe(idleFill);
+
+        //the second flash begins after the full 200 ms gap.
+        vi.advanceTimersByTime(1);
+        expect(square.getFill()).toBe("lightgreen");
+        expect(onComplete).not.toHaveBeenCalled();
+
+        //playback completes only after the second flash ends.
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe(idleFill);
+        expect(onComplete).toHaveBeenCalledOnce();
+    });
+
+
+
+
+
 });

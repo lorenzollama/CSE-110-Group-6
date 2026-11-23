@@ -59,7 +59,7 @@ class App implements ScreenSwitcher {
 
     this.minigame1Layer = new Konva.Layer();
     this.stage.add(this.minigame1Layer);
-    this.minigame1 = new Minigame1Controller(this.stage, this.minigame1Layer);
+    this.minigame1 = new Minigame1Controller(this.stage, this.minigame1Layer, () => this.switchToScreen({ type: "menu"}));
 
     this.startController = new StartController(this);
     this.screenLayer.add(this.startController.getView().getGroup());
