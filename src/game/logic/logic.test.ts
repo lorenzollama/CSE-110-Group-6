@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  factorRangeForLevel,
   isCorrect,
   makeDivisionQuestion,
   makeQuestion,
@@ -110,5 +111,45 @@ describe('isCorrect', () => {
   it('rejects half a fraction', () => {
     expect(isCorrect(fraction, '2')).toBe(false);
     expect(isCorrect(fraction, '2/')).toBe(false);
+  });
+});
+
+describe('factorRangeForLevel', () => {
+  it('starts level 1 with small factors', () => {
+    expect(factorRangeForLevel(1)).toEqual({ min: 2, max: 5 });
+  });
+
+  it('uses bigger numbers as the levels go up', () => {
+    for (let level = 2; level <= 10; level++) {
+      const now = factorRangeForLevel(level);
+      const before = factorRangeForLevel(level - 1);
+      expect(now.min).toBeGreaterThanOrEqual(before.min);
+      expect(now.max).toBeGreaterThanOrEqual(before.max);
+      expect(now.min + now.max).toBeGreaterThanOrEqual(before.min + before.max);
+    }
+    expect(factorRangeForLevel(10)).toEqual({ min: 6, max: 9 });
+  });
+
+  it('always stays within 2-9 and leaves at least four factors to pick from', () => {
+    for (let level = 1; level <= 10; level++) {
+      const { min, max } = factorRangeForLevel(level);
+      expect(min).toBeGreaterThanOrEqual(2);
+      expect(max).toBeLessThanOrEqual(9);
+      expect(max - min).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('keeps every topic\'s numbers in the level\'s range', () => {
+    const range = factorRangeForLevel(1); // 2-5
+    for (let i = 0; i < 200; i++) {
+      const [a, b] = makeQuestion(Math.random, range).prompt.split(' × ').map(Number);
+      expect([a, b].every(n => n >= 2 && n <= 5)).toBe(true);
+      const division = makeDivisionQuestion(Math.random, range);
+      const divisor = Number(division.prompt.split(' ÷ ')[1]);
+      expect(divisor).toBeLessThanOrEqual(5);
+      expect(Number(division.answer)).toBeLessThanOrEqual(5);
+      const denominator = Number(makeSimplificationQuestion(Math.random, range).answer.split('/')[1]);
+      expect(denominator).toBeLessThanOrEqual(5);
+    }
   });
 });

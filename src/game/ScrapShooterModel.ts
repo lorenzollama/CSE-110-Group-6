@@ -1,5 +1,5 @@
 import type { Topic } from '../types';
-import { isCorrect, makeQuestionForTopic, type Question } from './logic/questions';
+import { factorRangeForLevel, isCorrect, makeQuestionForTopic, type FactorRange, type Question } from './logic/questions';
 import { TOTAL_WAVES, waveSettings, type WaveSettings } from './logic/waves';
 
 export const LANE_COUNT = 4;
@@ -53,12 +53,14 @@ export class ScrapShooterModel {
   private spawnIn = 0; // seconds until the next one
   private breakLeft = 0; // seconds left before the next wave starts
   private nextId = 1;
+  private factors: FactorRange; // how big this level's numbers get
 
   constructor(
     private topic: Topic = 'multiplication',
     private level = 1,
     private rng: () => number = Math.random,
   ) {
+    this.factors = factorRangeForLevel(level);
     this.settings = waveSettings(level, this.wave);
     this.startWave();
     this.spawnNext(); // so the player has something to shoot right away
@@ -205,7 +207,7 @@ export class ScrapShooterModel {
 
     const scrap: Scrap = {
       id: this.nextId++,
-      question: makeQuestionForTopic(this.topic, this.rng),
+      question: makeQuestionForTopic(this.topic, this.rng, this.factors),
       lane: freeLanes[Math.floor(this.rng() * freeLanes.length)],
       y: SPAWN_Y,
     };

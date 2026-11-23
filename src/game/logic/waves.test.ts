@@ -18,6 +18,12 @@ describe('waveSettings', () => {
     expect(waveSettings(5, 1).speed).toBeGreaterThan(waveSettings(1, 1).speed);
   });
 
+  it('starts every level faster than the last level ended', () => {
+    for (let level = 2; level <= 10; level++) {
+      expect(waveSettings(level, 1).speed).toBeGreaterThan(waveSettings(level - 1, TOTAL_WAVES).speed);
+    }
+  });
+
   it('sends scraps sooner in later levels but never faster than the minimum', () => {
     expect(waveSettings(5, 1).interval).toBeLessThan(waveSettings(1, 1).interval);
     expect(waveSettings(100, TOTAL_WAVES).interval).toBe(MIN_INTERVAL);
