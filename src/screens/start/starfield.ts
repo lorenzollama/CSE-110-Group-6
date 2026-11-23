@@ -1,7 +1,7 @@
 /**
  * The start screen's night sky as plain numbers: where the stars are, how bright each one
  * is at a given moment, and where a shooting star is as it flies across.
- * No Konva here, so it's unit tested; StartView draws whatever these functions return.
+ * No Konva here, so it's unit tested; SpaceBackdrop (shared/space.ts) draws whatever these functions return.
  * Every random choice goes through `rng`, so tests can pass a fixed one.
  */
 
