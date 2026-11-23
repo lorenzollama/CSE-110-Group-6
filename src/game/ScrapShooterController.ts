@@ -15,8 +15,9 @@ const MAX_FRAME_SECONDS = 0.1;
 /**
  * Scraps fall down the screen in waves. The lowest one is the target. Type its answer and
  * press Enter. Right: the ship shoots it. Wrong: the input box border thickens briefly and a
- * popup explains the answer. A scrap that reaches the front line costs 1 health.
- * The game loop moves the model forward each frame and pauses while a popup is open.
+ * popup explains the answer (no health is lost). A scrap that reaches the front line costs
+ * 1 health. The game loop moves the model forward each frame and stops while a popup is
+ * open or the game is paused (the Pause button, or Esc / P).
  */
 export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
@@ -27,6 +28,7 @@ export class ScrapShooterController extends ScreenController {
   private looping = false;
   private frameId = 0;
   private lastFrame = 0;
+  private paused = false;
 
   constructor(
     private screenSwitcher: ScreenSwitcher,
@@ -48,7 +50,8 @@ export class ScrapShooterController extends ScreenController {
     const model = new ScrapShooterModel(this.topic, this.level);
     this.model = model;
 
-    this.view.build(() => this.backToLevels());
+    this.paused = false;
+    this.view.build(() => this.backToLevels(), () => this.togglePause());
     this.view.render(model.getScraps(), model.getTarget());
     this.view.showTyped(model.getTyped());
     this.view.showHealth(model.getHealth(), MAX_HEALTH);
@@ -85,7 +88,8 @@ export class ScrapShooterController extends ScreenController {
     const seconds = Math.max(0, Math.min((now - this.lastFrame) / 1000, MAX_FRAME_SECONDS));
     this.lastFrame = now;
 
-    if (!this.popups.isOpen()) this.step(this.model, seconds); // time stops while a popup is open
+    // Time stops while a popup is open or the game is paused.
+    if (!this.popups.isOpen() && !this.paused) this.step(this.model, seconds);
     if (this.looping) this.frameId = requestAnimationFrame(this.onFrame);
   };
 
@@ -105,6 +109,13 @@ export class ScrapShooterController extends ScreenController {
   private onKeyDown = (e: KeyboardEvent): void => {
     if (!this.model || this.popups.isOpen()) return; // typing pauses while a popup is open
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      this.togglePause();
+      return;
+    }
+    if (this.paused) return; // no typing while paused
 
     if (/^[0-9/]$/.test(e.key)) {
       e.preventDefault(); // also stops "/" from opening Firefox's quick find
@@ -184,6 +195,16 @@ export class ScrapShooterController extends ScreenController {
       },
     );
     // A lost game doesn't count toward the level's high score.
+  }
+
+  /**
+   * Pauses or resumes the game. Does nothing while a popup is open or once the game has
+   * ended (the loop has stopped), since time isn't moving then anyway.
+   */
+  private togglePause(): void {
+    if (!this.model || !this.looping || this.popups.isOpen()) return;
+    this.paused = !this.paused;
+    this.view.showPaused(this.paused);
   }
 
   /** Starts a fresh game of the given topic and level. */

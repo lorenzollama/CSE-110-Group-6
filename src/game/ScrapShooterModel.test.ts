@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRONT_LINE_Y, MAX_HEALTH, SPAWN_Y, ScrapShooterModel } from './ScrapShooterModel';
+import { FRONT_LINE_Y, LANE_COUNT, MAX_HEALTH, SPAWN_Y, ScrapShooterModel } from './ScrapShooterModel';
 import { TOTAL_WAVES, waveSettings } from './logic/waves';
 
 const STEP = 0.1; // seconds per tick, about what the game loop does
@@ -209,6 +209,26 @@ describe('ScrapShooterModel falling scraps', () => {
         }
       }
     }
+  });
+});
+
+describe('ScrapShooterModel scrap positions', () => {
+  it('uses every lane and nudges each scrap by at most a full step either way', () => {
+    // A seeded "random" source, so the test gives the same result every run.
+    let seed = 1;
+    const seeded = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const model = new ScrapShooterModel('multiplication', 10, seeded); // level 10 sends plenty of scraps
+    const lanes = new Set<number>();
+    for (let t = 0; t < 120 && !model.isLost(); t += STEP) {
+      model.tick(STEP);
+      for (const scrap of model.getScraps()) {
+        lanes.add(scrap.lane);
+        expect(scrap.nudge).toBeGreaterThanOrEqual(-1);
+        expect(scrap.nudge).toBeLessThanOrEqual(1);
+      }
+      if (model.getTarget()) answerRight(model);
+    }
+    expect(lanes.size).toBe(LANE_COUNT);
   });
 });
 

@@ -2,7 +2,7 @@ import type { Topic } from '../types';
 import { factorRangeForLevel, isCorrect, makeQuestionForTopic, type FactorRange, type Question } from './logic/questions';
 import { TOTAL_WAVES, waveSettings, type WaveSettings } from './logic/waves';
 
-export const LANE_COUNT = 4;
+export const LANE_COUNT = 5;
 export const MAX_HEALTH = 3;
 /** Screen y where a new scrap appears. */
 export const SPAWN_Y = 90;
@@ -19,6 +19,7 @@ export interface Scrap {
   id: number;
   question: Question;
   lane: number; // which column it falls down (the view decides where that is)
+  nudge: number; // -1 to 1: how far left or right of its column's center it sits, so the columns don't look too neat
   y: number; // screen y, grows as it falls
 }
 
@@ -209,6 +210,7 @@ export class ScrapShooterModel {
       id: this.nextId++,
       question: makeQuestionForTopic(this.topic, this.rng, this.factors),
       lane: freeLanes[Math.floor(this.rng() * freeLanes.length)],
+      nudge: this.rng() * 2 - 1,
       y: SPAWN_Y,
     };
     this.scraps.push(scrap);
