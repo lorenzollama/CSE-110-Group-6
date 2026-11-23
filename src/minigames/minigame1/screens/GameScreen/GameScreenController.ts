@@ -17,12 +17,21 @@ export class GameScreenController extends ScreenController {
 	private gameOver = false;
 	private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
+	private correctAudio: HTMLAudioElement;
+	private incorrectAudio: HTMLAudioElement;
+	private roundCompleteAudio: HTMLAudioElement;
+
 	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
 		super();
 		this.screenSwitcher = screenSwitcher;
 
 		this.model = new GameScreenModel();
 		this.view = new GameScreenView(stage);
+
+		this.correctAudio = new Audio('/minigame1/correct.mp3');
+		this.incorrectAudio = new Audio('/minigame1/incorrect.mp3');
+		this.roundCompleteAudio = new Audio('/minigame1/round_complete.mp3');
+
 		this.view.setSelectionHandler((row, col) => {
 			if (this.gameOver) {
 				return;
@@ -35,6 +44,9 @@ export class GameScreenController extends ScreenController {
 
 			if (result === "correct") {
 				this.view.updateStatus("Correct! Keep Going.");
+
+				this.correctAudio.currentTime = 0;
+				this.correctAudio.play();
 			}
 			else if (result === "incorrect") {
 				this.model.decrementLives();
@@ -50,9 +62,12 @@ export class GameScreenController extends ScreenController {
 					const expected = this.model.getCurrentExpected();
 					this.model.resetCurrentSequence();
 
+					this.incorrectAudio.currentTime = 0;
+					this.incorrectAudio.play();
+
 					// blink the correct square -> replay round
 					if (expected) {
-						this.view.getGrid().blink([expected], () => {
+						this.view.getGrid().blink([expected], false, () => {
 							this.scheduleForCurrentGame(() => {
 								this.playSequence(this.currentSequence);
 							}, 500)
@@ -67,13 +82,25 @@ export class GameScreenController extends ScreenController {
 			else if (result === "complete") {
 				this.model.incrementScore();
 				this.view.updateScore(this.model.getScore());
-				const advanced = this.model.advanceRound(
-					this.getRandomCoordinates()
-				);
-				if (advanced) {
-					this.currentSequence = this.model.getSequence();
-					this.playSequence(this.currentSequence);
-				}
+
+				this.correctAudio.currentTime = 0;
+				this.correctAudio.play();
+
+				setTimeout(() => {
+					this.roundCompleteAudio.currentTime = 0;
+					this.roundCompleteAudio.play();
+
+					setTimeout(() => {
+						const advanced = this.model.advanceRound(
+							this.getRandomCoordinates()
+						);
+
+						if (advanced) {
+							this.currentSequence = this.model.getSequence();
+							this.playSequence(this.currentSequence);
+						}
+					}, 1000);
+				}, 1000);
 			}
 		});
 	}
@@ -99,7 +126,7 @@ export class GameScreenController extends ScreenController {
 		const generation = this.gameGeneration;
 		this.view.updateRound(this.model.getRound());
 		this.view.updateStatus("Watch the sequence.");
-		this.view.getGrid().blink(sequence, () => {
+		this.view.getGrid().blink(sequence, true, () => {
 			if (generation !== this.gameGeneration || this.gameOver) {
 				return;
 			}

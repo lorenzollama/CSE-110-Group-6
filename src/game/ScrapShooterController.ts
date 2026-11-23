@@ -1,16 +1,22 @@
 import type Konva from 'konva';
-import { getHighScore, submitHighScore } from '../api/highScore';
 import { PopupController } from '../popups/PopupController';
 import { PopupView } from '../popups/PopupView';
 import { ScreenController, type ScreenSwitcher, type Topic } from '../types';
 import { MAX_HEALTH, ScrapShooterModel } from './ScrapShooterModel';
 import { ScrapShooterView } from './ScrapShooterView';
+import { TOTAL_WAVES } from './logic/waves';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
+import { submitLevelScore, submitUnlockedLevel } from "../api/progress";
+import type { HighScoresModel } from "../screens/levels/HighScoresModel";
+
+// A long gap between frames (like a hidden tab) must not make the scraps jump.
+const MAX_FRAME_SECONDS = 0.1;
 
 /**
- * Scraps sit on screen and the first one in the list is the target. Type its answer
- * and press Enter. Right: the ship shoots it and a new scrap takes its place.
- * Wrong: the input box border thickens briefly.
+ * Scraps fall down the screen in waves. The lowest one is the target. Type its answer and
+ * press Enter. Right: the ship shoots it. Wrong: the input box border thickens briefly and a
+ * popup explains the answer. A scrap that reaches the front line costs 1 health.
+ * The game loop moves the model forward each frame and pauses while a popup is open.
  */
 export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
@@ -18,11 +24,15 @@ export class ScrapShooterController extends ScreenController {
   private popups: PopupController;
   private topic: Topic = 'multiplication';
   private level = 1;
+  private looping = false;
+  private frameId = 0;
+  private lastFrame = 0;
 
   constructor(
     private screenSwitcher: ScreenSwitcher,
     popupLayer: Konva.Layer,
     private levelsByTopic: LevelsByTopic,
+    private highScores: HighScoresModel, // the same one the level map shows
   ) {
     super();
     this.popups = new PopupController(new PopupView(popupLayer));
@@ -35,30 +45,59 @@ export class ScrapShooterController extends ScreenController {
   show(): void {
     if (this.model) return;
     this.view.show();
-    const model = new ScrapShooterModel(this.topic);
+    const model = new ScrapShooterModel(this.topic, this.level);
     this.model = model;
 
     this.view.build(() => this.backToLevels());
-    model.getScraps().forEach(scrap => this.view.addScrap(scrap));
-    this.view.highlightTarget(model.getScraps());
+    this.view.render(model.getScraps(), model.getTarget());
     this.view.showTyped(model.getTyped());
     this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    this.view.showWave(model.getWave(), TOTAL_WAVES);
 
     window.addEventListener('keydown', this.onKeyDown);
-
-    getHighScore()
-      .then(highScore => {
-        if (this.model === model) this.view.showHighScore(highScore); // skip if the game was left meanwhile
-      })
-      .catch(err => console.warn('Could not load high score', err));
+    this.startLoop();
   }
 
   hide(): void {
+    this.stopLoop();
     this.popups.close();
     window.removeEventListener('keydown', this.onKeyDown);
     this.view.destroy();
     this.model = null;
     this.view.hide();
+  }
+
+  // ----------------------------------------------------------- game loop
+
+  private startLoop(): void {
+    this.looping = true;
+    this.lastFrame = performance.now();
+    this.frameId = requestAnimationFrame(this.onFrame);
+  }
+
+  private stopLoop(): void {
+    this.looping = false;
+    cancelAnimationFrame(this.frameId);
+  }
+
+  private onFrame = (now: number): void => {
+    if (!this.looping || !this.model) return;
+    const seconds = Math.max(0, Math.min((now - this.lastFrame) / 1000, MAX_FRAME_SECONDS));
+    this.lastFrame = now;
+
+    if (!this.popups.isOpen()) this.step(this.model, seconds); // time stops while a popup is open
+    if (this.looping) this.frameId = requestAnimationFrame(this.onFrame);
+  };
+
+  /** Moves the game forward and updates the screen. */
+  private step(model: ScrapShooterModel, seconds: number): void {
+    const result = model.tick(seconds);
+    if (result.newWave !== null) this.view.showWave(result.newWave, TOTAL_WAVES);
+    if (result.missed.length > 0) this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    this.view.render(model.getScraps(), model.getTarget());
+
+    if (model.isLost()) this.gameOver(model);
+    else if (model.isOver()) this.endGame(model);
   }
 
   // --------------------------------------------------------------- input
@@ -85,13 +124,11 @@ export class ScrapShooterController extends ScreenController {
     const result = model.submit();
     if (result.type === 'ignored') return;
     this.view.showTyped(model.getTyped());
-    this.view.showHealth(model.getHealth(), MAX_HEALTH);
 
     if (result.type === 'correct') {
-      this.view.shoot(result.hit.slot);
-      this.view.removeScrap(result.hit.slot);
-      this.view.addScrap(result.spawned);
-      this.view.highlightTarget(model.getScraps());
+      this.view.shoot(result.hit);
+      this.view.render(model.getScraps(), model.getTarget());
+      if (model.isOver()) this.endGame(model);
     } else {
       this.view.flashWrong();
       const { question } = result.target;
@@ -102,24 +139,29 @@ export class ScrapShooterController extends ScreenController {
           correctAnswer: question.answer,
           explanation: question.explanation,
         },
-        // If this was the last answer, show the level-complete popup after "Got it". and if the player lost all health, show the game-over popup after "Got it".
-        () => {
-          if (model.isLost()) this.gameOver(model);
-          else if(model.isOver()) this.endGame(model);
-        },
+        () => {}, // a wrong answer costs no health, so the game just carries on after "Got it"
       );
-      return;
     }
-
-    if (model.isOver()) this.endGame(model);
   }
 
   private endGame(model: ScrapShooterModel): void {
+    this.stopLoop();
     window.removeEventListener('keydown', this.onKeyDown);
     this.levelsByTopic[this.topic].completeLevel(this.level);
+    // Save the unlock on the server so it survives a refresh. If saving fails, the game keeps going.
+    submitUnlockedLevel(this.topic, this.levelsByTopic[this.topic].getUnlockedLevels())
+      .catch(err => console.warn('Could not save level progress', err));
+
+    // Only wins count toward the topic's high score, so it's recorded here and not in gameOver.
+    // The level map shows the topic's total; it only changes when this level's best is beaten.
+    const score = model.getScore();
+    if (this.highScores.recordWin(this.topic, this.level, score)) {
+      submitLevelScore(this.topic, this.level, score)
+        .catch(err => console.warn('Could not save the score', err));
+    }
 
     this.popups.showLevelComplete(
-      { level: this.level, score: model.getScore(), accuracy: model.getAccuracy() },
+      { level: this.level, score, accuracy: model.getAccuracy() },
       {
         onNextLevel: () =>{
           if(this.level < TOTAL_LEVELS) this.startLevel(this.topic, this.level + 1);
@@ -128,15 +170,10 @@ export class ScrapShooterController extends ScreenController {
         onMenu: () => this.backToLevels(),
       },
     );
-    
-    submitHighScore(model.getScore())
-      .then(({ highScore }) => {
-        if (this.model === model) this.view.showHighScore(highScore);
-      })
-      .catch(err => console.warn('Could not save high score', err));
   }
 
   private gameOver(model: ScrapShooterModel): void {
+    this.stopLoop();
     window.removeEventListener('keydown', this.onKeyDown);
 
     this.popups.showGameOver(
@@ -146,12 +183,7 @@ export class ScrapShooterController extends ScreenController {
         onMenu: () => this.backToLevels(),
       },
     );
-    
-    submitHighScore(model.getScore())
-      .then(({ highScore }) => {
-        if (this.model === model) this.view.showHighScore(highScore);
-      })
-      .catch(err => console.warn('Could not save high score', err));
+    // A lost game doesn't count toward the level's high score.
   }
 
   /** Starts a fresh game of the given topic and level. */

@@ -1,4 +1,13 @@
 {
   "version": 1,
-  "highScore": 9
+  "highScore": 9,
+  "unlockedLevels": {
+    "multiplication": 3
+  },
+  "bestScores": {
+    "multiplication": {
+      "1": 9,
+      "2": 8
+    }
+  }
 }

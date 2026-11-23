@@ -1,6 +1,28 @@
 import Konva from "konva";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Square } from "./Square";
+
+class MockAudio {
+    static instances: MockAudio[] = [];
+
+    currentTime = 0;
+    play = vi.fn().mockResolvedValue(undefined);
+    src: string;
+
+    constructor(src: string) {
+        this.src = src;
+        MockAudio.instances.push(this);
+    }
+}
+
+beforeEach(() => {
+    MockAudio.instances = [];
+    vi.stubGlobal("Audio", MockAudio);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe("Square creation", () => {
     let parent: Konva.Group;
@@ -228,5 +250,56 @@ describe("Square selection feedback", () => {
         square.destroy();
 
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+// blink audio
+describe("Square audio playback", () => {
+    let parent: Konva.Group;
+    let square: Square;
+
+    it("creates the blink audio", () => {
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        expect(MockAudio.instances[0].src).toBe(
+            "/minigame1/blink.mp3"
+        );
+    });
+
+    it("plays audio when blinking by default", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        square.blink();
+
+        expect(MockAudio.instances[0].play).toHaveBeenCalledOnce();
+    });
+
+    it("does not play audio when playAudio is false", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        square.blink(undefined, false);
+
+        expect(MockAudio.instances[0].play).not.toHaveBeenCalled();
+    });
+
+    it("resets audio currentTime before playing", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        const audio = MockAudio.instances[0];
+        audio.currentTime = 5;
+
+        square.blink();
+
+        expect(audio.currentTime).toBe(0);
     });
 });

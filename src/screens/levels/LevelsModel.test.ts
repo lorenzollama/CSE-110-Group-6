@@ -36,7 +36,30 @@ describe('LevelModel', () => {
     it('level 0 is not unlocked', () => {
     const model = new LevelsModel;
     expect(model.isUnlocked(0)).toBe(false);
-    
+
+  });
+
+  it('starts at a saved level', () => {
+    const model = new LevelsModel(4);
+    expect(model.getUnlockedLevels()).toBe(4);
+    expect(model.isUnlocked(4)).toBe(true);
+    expect(model.isUnlocked(5)).toBe(false);
+  });
+
+  it('can start at the last level', () => {
+    expect(new LevelsModel(TOTAL_LEVELS).getUnlockedLevels()).toBe(TOTAL_LEVELS);
+  });
+
+  // Edge case: bad save data must not unlock every level (99) or lock all of them (0).
+  it('starts at level 1 when the saved level is out of range', () => {
+    expect(new LevelsModel(0).getUnlockedLevels()).toBe(1);
+    expect(new LevelsModel(-2).getUnlockedLevels()).toBe(1);
+    expect(new LevelsModel(TOTAL_LEVELS + 1).getUnlockedLevels()).toBe(1);
+  });
+
+  it("starts at level 1 when the saved level isn't a whole number", () => {
+    expect(new LevelsModel(2.5).getUnlockedLevels()).toBe(1);
+    expect(new LevelsModel(NaN).getUnlockedLevels()).toBe(1);
   });
 
 });
@@ -55,6 +78,13 @@ describe('createLevelsByTopic', () => {
     levels.division.completeLevel(2);
     expect(levels.division.getUnlockedLevels()).toBe(3);
     expect(levels.multiplication.getUnlockedLevels()).toBe(1);
+    expect(levels.simplification.getUnlockedLevels()).toBe(1);
+  });
+
+  it('starts each topic at its saved level, and missing topics at 1', () => {
+    const levels = createLevelsByTopic({ multiplication: 3, division: 7 });
+    expect(levels.multiplication.getUnlockedLevels()).toBe(3);
+    expect(levels.division.getUnlockedLevels()).toBe(7);
     expect(levels.simplification.getUnlockedLevels()).toBe(1);
   });
 });

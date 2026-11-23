@@ -8,7 +8,9 @@ import { Minigame2Controller } from "./minigames/minigame2/controller.ts";
 import { Game } from "./minigames/minigame2/model.ts";
 import { Minigame2View } from "./minigames/minigame2/view.ts";
 import { LevelsController } from "./screens/levels/LevelsController.ts";
-import { createLevelsByTopic } from "./screens/levels/LevelsModel.ts";
+import { createLevelsByTopic, type LevelsByTopic } from "./screens/levels/LevelsModel.ts";
+import { HighScoresModel } from "./screens/levels/HighScoresModel.ts";
+import { getProgress, type SavedProgress } from "./api/progress.ts";
 
 const SCREEN_WIDTH = 800;
 const SCREEN_HEIGHT = 600;
@@ -25,9 +27,13 @@ class App implements ScreenSwitcher {
   private startController: StartController;
   private topicSelect: TopicSelectController;
   private levelsController: LevelsController;
-  private levelsByTopic = createLevelsByTopic();
+  private levelsByTopic: LevelsByTopic;
+  private highScores: HighScoresModel; // shared: the game records wins, the map shows the topic totals
 
-  constructor(container: string) {
+  /** saved comes from the server, so the player picks up where they left off. */
+  constructor(container: string, saved: SavedProgress) {
+    this.levelsByTopic = createLevelsByTopic(saved.unlockedLevels);
+    this.highScores = new HighScoresModel(saved.bestScores);
     this.stage = new Konva.Stage({
       container,
       width: window.innerWidth,
@@ -40,7 +46,7 @@ class App implements ScreenSwitcher {
     this.stage.add(this.screenLayer);
     this.stage.add(this.popupLayer);
 
-    this.scrapShooter = new ScrapShooterController(this, this.popupLayer, this.levelsByTopic);
+    this.scrapShooter = new ScrapShooterController(this, this.popupLayer, this.levelsByTopic, this.highScores);
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
 
@@ -69,7 +75,7 @@ class App implements ScreenSwitcher {
     this.screenLayer.add(this.startController.getView().getGroup());
     this.topicSelect = new TopicSelectController(this);
     this.screenLayer.add(this.topicSelect.getView().getGroup());
-    this.levelsController = new LevelsController(this, this.levelsByTopic);
+    this.levelsController = new LevelsController(this, this.levelsByTopic, this.highScores);
     this.screenLayer.add(this.levelsController.getView().getGroup());
     this.centerScreens();
     this.screenLayer.draw();
@@ -146,7 +152,16 @@ class App implements ScreenSwitcher {
   }
 }
 
-const app = new App("container");
-
-// Open on the start screen; its buttons switch to the games.
-app.switchToScreen({ type: "menu" });
+// Load the saved progress and scores from the server first, then start the app.
+// If the server isn't running, everyone starts at level 1 with no scores and the game
+// still works (it just won't save).
+getProgress()
+  .catch((err): SavedProgress => {
+    console.warn("Could not load saved progress (is `npm run server` running?)", err);
+    return { unlockedLevels: {}, bestScores: {} };
+  })
+  .then((saved) => {
+    const app = new App("container", saved);
+    // Open on the start screen; its buttons switch to the games.
+    app.switchToScreen({ type: "menu" });
+  });

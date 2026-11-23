@@ -1,20 +1,15 @@
 import Konva from 'konva';
 import type { View } from '../types';
-import type { Scrap } from './ScrapShooterModel';
-import {makeButton} from "../popups/PopupView";
+import { FRONT_LINE_Y, LANE_COUNT, type Scrap } from './ScrapShooterModel';
+import { makeButton } from '../popups/PopupView';
 
 const WIDTH = 800;
 const HEIGHT = 600;
 const SHIP = { x: WIDTH / 2, y: 440 };
 const SCRAP_RADIUS = 40;
 
-// Fixed spots where scraps sit, indexed by Scrap.slot.
-const SLOTS = [
-  { x: 120, y: 110 },
-  { x: 320, y: 190 },
-  { x: 480, y: 110 },
-  { x: 680, y: 190 },
-];
+// The x of each lane, spread evenly across the screen, indexed by Scrap.lane.
+const LANE_X = Array.from({ length: LANE_COUNT }, (_, lane) => (WIDTH / LANE_COUNT) * (lane + 0.5));
 
 /**
  * Black and white, plain shapes only. The target scrap has a thick outline.
@@ -27,8 +22,8 @@ export class ScrapShooterView implements View {
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
-  private highScoreText!: Konva.Text;
-private healthBar!: Konva.Group;
+  private waveText!: Konva.Text;
+  private healthBar!: Konva.Group;
 
   getGroup(): Konva.Group {
     return this.group;
@@ -73,24 +68,24 @@ private healthBar!: Konva.Group;
         fill: 'black',
         listening: false,
       }),
-
     );
 
-    this.highScoreText = new Konva.Text({
-      x: WIDTH - 220,
+    this.waveText = new Konva.Text({
+      x: WIDTH / 2 - 100,
       y: 16,
       width: 200,
-      align: 'right',
-      text: 'High score: –',
+      align: 'center',
+      text: '',
       fontSize: 20,
       fill: 'white',
     });
 
-this.healthBar = new Konva.Group({ x: 20, y: 16 });
+    this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
+    this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText, this.highScoreText, this.healthBar);
-    this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280' ,100));
+    this.group.add(this.inputBox, this.inputText, this.waveText, this.healthBar);
+    this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
   }
 
   destroy(): void {
@@ -119,10 +114,22 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
     );
   }
 
-  addScrap(scrap: Scrap): void {
-    const { x, y } = SLOTS[scrap.slot];
+  /** A dashed line across the screen. A scrap that touches it is lost and costs health. */
+  private drawFrontLine(): void {
+    const y = FRONT_LINE_Y + SCRAP_RADIUS;
+    this.group.add(
+      new Konva.Line({
+        points: [0, y, WIDTH, y],
+        stroke: 'white',
+        strokeWidth: 2,
+        dash: [12, 8],
+        listening: false,
+      }),
+    );
+  }
 
-    const group = new Konva.Group({ x, y });
+  private addScrap(scrap: Scrap): { group: Konva.Group; body: Konva.Circle } {
+    const group = new Konva.Group({ x: LANE_X[scrap.lane], y: scrap.y });
     const body = new Konva.Circle({ radius: SCRAP_RADIUS, fill: 'black', stroke: 'white', strokeWidth: 2 });
     const label = new Konva.Text({ text: scrap.question.prompt, fontSize: 20, fill: 'white' });
     label.offsetX(label.width() / 2);
@@ -130,19 +137,29 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
     group.add(body, label);
     this.group.add(group);
-    this.scrapGroups.set(scrap.slot, { group, body });
+    const shape = { group, body };
+    this.scrapGroups.set(scrap.id, shape);
+    return shape;
   }
 
-  removeScrap(slot: number): void {
-    this.scrapGroups.get(slot)?.group.destroy();
-    this.scrapGroups.delete(slot);
-  }
+  /**
+   * Makes the screen match the model: adds new scraps, moves the falling ones, removes the
+   * ones that are gone. The target gets a thick outline so the player knows which to answer.
+   */
+  render(scraps: Scrap[], target: Scrap | null): void {
+    const live = new Set(scraps.map(scrap => scrap.id));
+    for (const [id, shape] of this.scrapGroups) {
+      if (!live.has(id)) {
+        shape.group.destroy();
+        this.scrapGroups.delete(id);
+      }
+    }
 
-  /** The first scrap in the list is the target. A thick outline shows which problem to answer. */
-  highlightTarget(scraps: Scrap[]): void {
-    scraps.forEach((scrap, i) => {
-      this.scrapGroups.get(scrap.slot)?.body.strokeWidth(i === 0 ? 8 : 2);
-    });
+    for (const scrap of scraps) {
+      const shape = this.scrapGroups.get(scrap.id) ?? this.addScrap(scrap);
+      shape.group.y(scrap.y);
+      shape.body.strokeWidth(scrap === target ? 8 : 2);
+    }
     this.group.getLayer()?.batchDraw();
   }
 
@@ -151,34 +168,38 @@ this.healthBar = new Konva.Group({ x: 20, y: 16 });
     this.group.getLayer()?.batchDraw();
   }
 
-  showHighScore(highScore: number): void {
-    this.highScoreText.text(`High score: ${highScore}`);
+  showWave(wave: number, totalWaves: number): void {
+    this.waveText.text(`Wave ${wave} / ${totalWaves}`);
     this.group.getLayer()?.batchDraw();
   }
 
   showHealth(health: number, maxHealth: number): void {
-  this.healthBar.destroyChildren();
-  for (let i = 0; i < maxHealth; i++) {
-    this.healthBar.add(
-      new Konva.Rect({
-        x: i * 30,
-        y: 0,
-        width: 22,
-        height: 22,
-        stroke: 'white',
-        strokeWidth: 2,
-        fill: i < health ? 'white' : 'black',
-      }),
-    );
+    this.healthBar.destroyChildren();
+    for (let i = 0; i < maxHealth; i++) {
+      this.healthBar.add(
+        new Konva.Rect({
+          x: i * 30,
+          y: 0,
+          width: 22,
+          height: 22,
+          stroke: 'white',
+          strokeWidth: 2,
+          fill: i < health ? 'white' : 'black',
+        }),
+      );
+    }
+    this.group.getLayer()?.batchDraw();
   }
-  this.group.getLayer()?.batchDraw();
-}
 
   // ------------------------------------------------------------- actions
 
-  shoot(slot: number): void {
-    const { x, y } = SLOTS[slot];
-    const shot = new Konva.Line({ points: [SHIP.x, SHIP.y - 30, x, y], stroke: 'white', strokeWidth: 3 });
+  /** Draws a quick line from the ship to the scrap that was hit. */
+  shoot(scrap: Scrap): void {
+    const shot = new Konva.Line({
+      points: [SHIP.x, SHIP.y - 30, LANE_X[scrap.lane], scrap.y],
+      stroke: 'white',
+      strokeWidth: 3,
+    });
     this.group.add(shot);
     this.shotTimer = window.setTimeout(() => {
       shot.destroy();

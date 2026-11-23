@@ -1,6 +1,29 @@
+
 import Konva from "konva";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Grid } from "./Grid";
+
+class MockAudio {
+    static instances: MockAudio[] = [];
+
+    currentTime = 0;
+    src: string;
+    play = vi.fn().mockResolvedValue(undefined);
+
+    constructor(src: string) {
+        this.src = src;
+        MockAudio.instances.push(this);
+    }
+}
+
+beforeEach(() => {
+    MockAudio.instances = [];
+    vi.stubGlobal("Audio", MockAudio);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe("Grid creation", () => {
     let parent: Konva.Group;
@@ -124,6 +147,7 @@ describe("Grid blinking", () => {
                 { row: 1, col: 1 },
                 { row: 2, col: 2 },
             ],
+            true,
             onComplete
         );
 
@@ -163,29 +187,26 @@ describe("Grid blinking", () => {
                 { row: 1, col: 1 },
                 { row: 2, col: 2 },
             ],
+            true,
             onComplete
         );
 
-        // Only the first square should start blinking.
         expect(firstSpy).toHaveBeenCalledOnce();
         expect(secondSpy).not.toHaveBeenCalled();
         expect(thirdSpy).not.toHaveBeenCalled();
         expect(onComplete).not.toHaveBeenCalled();
 
-        // Finish the first blink.
         callbacks.shift()!();
 
         expect(secondSpy).toHaveBeenCalledOnce();
         expect(thirdSpy).not.toHaveBeenCalled();
         expect(onComplete).not.toHaveBeenCalled();
 
-        // Finish the second blink.
         callbacks.shift()!();
 
         expect(thirdSpy).toHaveBeenCalledOnce();
         expect(onComplete).not.toHaveBeenCalled();
 
-        // Finish the third blink.
         callbacks.shift()!();
 
         expect(onComplete).toHaveBeenCalledOnce();
@@ -198,7 +219,7 @@ describe("Grid blinking", () => {
 
         const onComplete = vi.fn();
 
-        grid.blink([], onComplete);
+        grid.blink([], true, onComplete);
 
         expect(onComplete).toHaveBeenCalledOnce();
     });
@@ -221,6 +242,7 @@ describe("Grid blinking", () => {
                 { row: 1, col: 1 },
                 { row: 3, col: 3 },
             ],
+            true,
             onComplete
         );
 
