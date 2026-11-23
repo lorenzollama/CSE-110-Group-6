@@ -109,7 +109,8 @@ export class ScrapShooterView implements View {
     this.group.add(this.pauseOverlay); // above the game, below the buttons so they still work
     this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
 
-    const pauseButton = makeButton(WIDTH - 120, 12, 'Pause', onPause, '#6b7280', 100);
+    // Bottom-right, across from Back: up top it would sit under scraps falling in the right lane.
+    const pauseButton = makeButton(WIDTH - 120, 536, 'Pause', onPause, '#6b7280', 100);
     this.pauseLabel = pauseButton.findOne<Konva.Text>('Text')!;
     this.group.add(pauseButton);
   }

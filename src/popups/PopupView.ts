@@ -136,7 +136,6 @@ export class PopupView {
   }
 }
 
-/** A rounded button. Exported so other views (like the start screen) can use the same button. */
 /** A small "or press Enter" under a popup's main button (the one Enter presses). */
 function enterHint(x: number, y: number, width = 150): Konva.Text {
   return new Konva.Text({
@@ -145,6 +144,7 @@ function enterHint(x: number, y: number, width = 150): Konva.Text {
   });
 }
 
+/** A rounded button. Exported so other views (like the start screen) can use the same button. */
 export function makeButton(
   x: number, y: number, label: string, onClick: () => void,
   color = "#4f46e5", width = 150
