@@ -3,11 +3,12 @@ import type { View } from "../../types.ts";
 import { GRID_SIZE, STAGE_HEIGHT, STAGE_WIDTH } from "./constants.ts";
 import type { GameState } from "./types.ts";
 
-// Board layout, in pixels. The tile size is worked out from GRID_SIZE so the
-// whole board fits between the score and the bottom of the stage.
-const BOARD_Y = 100; // leaves room for the score above the board
-const BOTTOM_MARGIN = 20;
+// Board layout, in pixels. The board is on the left and the display is on the right.
+// The tile size is worked out from GRID_SIZE so the whole board fits.
+const BOARD_Y = 70; // leaves a little room above the board
+const BOTTOM_MARGIN = 120; // keeps the board small enough to fit next to the display
 const GAP_RATIO = 0.1; // each gap is this fraction of a tile's width
+const BOARD_SIDE_WIDTH = STAGE_WIDTH - 330; // the part of the stage left of the display
 
 // space the board may take up: GRID_SIZE tiles plus GRID_SIZE + 1 gaps
 const MAX_BOARD_SIZE = STAGE_HEIGHT - BOARD_Y - BOTTOM_MARGIN;
@@ -15,11 +16,24 @@ const TILE_SIZE = Math.floor(MAX_BOARD_SIZE / (GRID_SIZE + (GRID_SIZE + 1) * GAP
 const GAP = Math.floor(TILE_SIZE * GAP_RATIO);
 // rounding down leaves a few spare pixels, so size the board to fit the tiles exactly
 const BOARD_SIZE = GRID_SIZE * TILE_SIZE + (GRID_SIZE + 1) * GAP;
-const BOARD_X = (STAGE_WIDTH - BOARD_SIZE) / 2;
+const BOARD_X = (BOARD_SIDE_WIDTH - BOARD_SIZE) / 2; // centered on the left side
 
-const BOARD_COLOR = "#8d99ae";
-const EMPTY_CELL_COLOR = "#cdd3db";
+// Both screens are dark with a light frame, so they look built into the wall
+const SCREEN_COLOR = "#0f172a";
+const EMPTY_CELL_COLOR = "#1e293b";
+const FRAME_COLOR = "#cbd5e1";
+const FRAME = 8; // how thick the frame is
 const TEXT_COLOR = "#2b2d42";
+const SCREEN_TEXT_COLOR = "#e2e8f0"; // light text on the screens
+
+// The display, right of the board and as tall as it. The power level and base are
+// always at the top, and the page under them shows one thing at a time.
+const DISPLAY_X = BOARD_SIDE_WIDTH;
+const DISPLAY_Y = BOARD_Y;
+const DISPLAY_WIDTH = 300;
+const DISPLAY_HEIGHT = BOARD_SIZE;
+const DISPLAY_PADDING = 16; // space between the edge of the screen and its text
+const PAGE_Y = DISPLAY_Y + 100; // where the page starts, under the power level and base
 
 // Game over popup: "No moves left" with the New game button under it,
 // centered as one block over the middle of the board
@@ -59,6 +73,7 @@ export class Minigame2View implements View {
   private group: Konva.Group;
   private tiles: Konva.Group;
   private scoreText: Konva.Text;
+  private baseText: Konva.Text;
   private newGameButton: Konva.Group;
   private gameOverPopup: Konva.Group;
   private questionPopup: Konva.Group;
@@ -73,15 +88,17 @@ export class Minigame2View implements View {
     this.tiles = new Konva.Group();
     this.group.add(this.tiles);
 
-    this.scoreText = new Konva.Text({
-      x: BOARD_X,
-      y: 40,
-      text: "Score: 0",
-      fontSize: 32,
-      fontFamily: "Arial",
-      fill: TEXT_COLOR,
-    });
-    this.group.add(this.scoreText);
+    this.group.add(createScreen(DISPLAY_X, DISPLAY_Y, DISPLAY_WIDTH, DISPLAY_HEIGHT));
+    this.scoreText = createDisplayText(DISPLAY_Y + 20, 26, "bold");
+    this.baseText = createDisplayText(DISPLAY_Y + 56, 20, "normal");
+    this.group.add(this.scoreText, this.baseText);
+    // a line between them and the page
+    const lineY = PAGE_Y - 14;
+    this.group.add(new Konva.Line({
+      points: [DISPLAY_X + DISPLAY_PADDING, lineY, DISPLAY_X + DISPLAY_WIDTH - DISPLAY_PADDING, lineY],
+      stroke: "#334155",
+      strokeWidth: 2,
+    }));
 
     this.newGameButton = createNewGameButton();
     this.gameOverPopup = createGameOverPopup(this.newGameButton);
@@ -98,7 +115,8 @@ export class Minigame2View implements View {
    */
   draw(state: GameState): void {
     this.drawTiles(state);
-    this.scoreText.text(`Score: ${state.score}`);
+    this.scoreText.text(`Power level: ${state.score}`);
+    this.baseText.text(`Base: ${state.base}`);
     this.questionText.text(state.question ?? "");
     this.questionPopup.visible(state.question !== null);
     // the board can be full while a question is up, so the question goes first
@@ -121,16 +139,9 @@ export class Minigame2View implements View {
     this.newGameButton.on("click tap", handler);
   }
 
-  // Draws the board background and the 16 empty cells (done once)
+  // Draws the board's screen and the empty cells (done once)
   private drawEmptyGrid(): void {
-    this.group.add(new Konva.Rect({
-      x: BOARD_X,
-      y: BOARD_Y,
-      width: BOARD_SIZE,
-      height: BOARD_SIZE,
-      fill: BOARD_COLOR,
-      cornerRadius: 8,
-    }));
+    this.group.add(createScreen(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE));
 
     for (let row = 0; row < GRID_SIZE; row++) {
       for (let col = 0; col < GRID_SIZE; col++) {
@@ -289,6 +300,37 @@ function createGameOverPopup(newGameButton: Konva.Group): Konva.Group {
   }));
   popup.add(newGameButton);
   return popup;
+}
+
+// A dark screen with a light frame around it, so it looks built into the wall
+function createScreen(x: number, y: number, width: number, height: number): Konva.Group {
+  const screen = new Konva.Group();
+  screen.add(new Konva.Rect({
+    x: x - FRAME,
+    y: y - FRAME,
+    width: width + 2 * FRAME,
+    height: height + 2 * FRAME,
+    fill: FRAME_COLOR,
+    cornerRadius: 12,
+  }));
+  screen.add(new Konva.Rect({ x, y, width, height, fill: SCREEN_COLOR, cornerRadius: 8 }));
+  return screen;
+}
+
+// Centered text on the display. Text that is too long wraps onto the next line.
+function createDisplayText(y: number, fontSize: number, fontStyle: string): Konva.Text {
+  return new Konva.Text({
+    x: DISPLAY_X + DISPLAY_PADDING,
+    y,
+    width: DISPLAY_WIDTH - 2 * DISPLAY_PADDING,
+    text: "",
+    fontSize,
+    fontStyle,
+    fontFamily: "Arial",
+    lineHeight: 1.25,
+    fill: SCREEN_TEXT_COLOR,
+    align: "center",
+  });
 }
 
 // A line of centered text across the board, used in the question popup
