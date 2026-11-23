@@ -1,6 +1,7 @@
 {
   "version": 1,
   "highScore": 9,
+  "minigame1PersonalBest": 3,
   "unlockedLevels": {
     "multiplication": 3
   },
