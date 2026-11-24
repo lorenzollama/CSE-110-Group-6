@@ -41,6 +41,7 @@ const INSTRUCTIONS = [
   "HOW TO PLAY",
   "Slide the tiles with the arrow keys or WASD. Two tiles with the same number merge.",
   "Every few moves a question comes up here. Type the answer and press Enter.",
+  "Grey tiles can't merge. A wrong answer turns that tile grey.",
 ];
 
 // The New game button, on the display when the game is over
