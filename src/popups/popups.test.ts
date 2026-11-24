@@ -75,8 +75,9 @@ describe("PopupController", () => {
   // real view's private parts.
   function setup() {
     const view = { showWrongAnswer: vi.fn(), showLevelComplete: vi.fn(), showGameOver:vi.fn(), close: vi.fn() };
-    const popups = new PopupController(view as unknown as PopupView);
-    return { view, popups };
+    const playClick = vi.fn(); // stands in for the click sound
+    const popups = new PopupController(view as unknown as PopupView, playClick);
+    return { view, popups, playClick };
   }
 
   // Opening a popup tells the view to draw it with the game's data, and marks it open.
@@ -185,5 +186,60 @@ describe("PopupController", () => {
     expect(actions.onMenu).toHaveBeenCalledOnce();
     expect(view.close).toHaveBeenCalledTimes(2);
 
+  });
+
+  // Enter presses the popup's main button, so the player can keep their hands on the keyboard.
+  it('Enter presses "Got it" on the wrong-answer popup', () => {
+    const { view, popups, playClick } = setup();
+    const onContinue = vi.fn();
+    popups.showWrongAnswer(wrongAnswer, onContinue);
+    expect(popups.pressEnter()).toBe(true);
+    expect(onContinue).toHaveBeenCalledOnce();
+    expect(playClick).toHaveBeenCalledOnce(); // the same blip as clicking
+    expect(view.close).toHaveBeenCalledOnce();
+    expect(popups.isOpen()).toBe(false);
+  });
+
+  it('Enter presses "Next level", not "Menu", on the level-complete popup', () => {
+    const { popups } = setup();
+    const actions = { onNextLevel: vi.fn(), onMenu: vi.fn() };
+    popups.showLevelComplete(levelComplete, actions);
+    popups.pressEnter();
+    expect(actions.onNextLevel).toHaveBeenCalledOnce();
+    expect(actions.onMenu).not.toHaveBeenCalled();
+  });
+
+  it('Enter presses "Try again", not "Menu", on the game-over popup', () => {
+    const { popups } = setup();
+    const actions = { onTryAgain: vi.fn(), onMenu: vi.fn() };
+    popups.showGameOver(gameOver, actions);
+    popups.pressEnter();
+    expect(actions.onTryAgain).toHaveBeenCalledOnce();
+    expect(actions.onMenu).not.toHaveBeenCalled();
+  });
+
+  // Unsuccessful path: with no popup open (or once it's closed), Enter does nothing here,
+  // so the game gets it as usual.
+  it("does nothing on Enter when no popup is open", () => {
+    const { view, popups, playClick } = setup();
+    expect(popups.pressEnter()).toBe(false);
+
+    const onContinue = vi.fn();
+    popups.showWrongAnswer(wrongAnswer, onContinue);
+    view.showWrongAnswer.mock.calls[0][1](); // clicked "Got it"
+    expect(popups.pressEnter()).toBe(false);
+    expect(onContinue).toHaveBeenCalledOnce();
+    expect(playClick).not.toHaveBeenCalled();
+  });
+
+  // Edge case: Enter's action opens the next popup; Enter then presses that popup's button.
+  it("Enter works on a popup opened by the last one's action", () => {
+    const { popups } = setup();
+    const actions = { onNextLevel: vi.fn(), onMenu: vi.fn() };
+    popups.showWrongAnswer(wrongAnswer, () => popups.showLevelComplete(levelComplete, actions));
+    popups.pressEnter();
+    expect(popups.isOpen()).toBe(true);
+    popups.pressEnter();
+    expect(actions.onNextLevel).toHaveBeenCalledOnce();
   });
 });

@@ -45,6 +45,7 @@ export class PopupView {
     }));
 
     box.add(makeButton((W - 150) / 2, H - 66, "Got it", onGotIt));
+    box.add(enterHint((W - 150) / 2, H - 18));
     this.layer.batchDraw();
   }
 
@@ -66,6 +67,7 @@ export class PopupView {
       text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
     }));
     box.add(makeButton(40, H - 70, "Next level", actions.onNextLevel, "#16a34a"));
+    box.add(enterHint(40, H - 22));
     box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
     //pop up on the title
     title.scale({ x: 0.6, y: 0.6 });
@@ -92,6 +94,7 @@ export class PopupView {
     }));
 
     box.add(makeButton(40, H - 70, "Try again", actions.onTryAgain, "#16a34a"));
+    box.add(enterHint(40, H - 22));
     box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
 
     // small "pop" on the title
@@ -131,6 +134,14 @@ export class PopupView {
     this.openPopup = root;
     return box;
   }
+}
+
+/** A small "or press Enter" under a popup's main button (the one Enter presses). */
+function enterHint(x: number, y: number, width = 150): Konva.Text {
+  return new Konva.Text({
+    x, y, width, text: "or press Enter", fontSize: 12, fill: "#6b7280", align: "center",
+    listening: false,
+  });
 }
 
 /** A rounded button. Exported so other views (like the start screen) can use the same button. */

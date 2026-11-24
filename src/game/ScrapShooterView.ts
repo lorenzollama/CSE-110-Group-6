@@ -10,6 +10,16 @@ const SCRAP_RADIUS = 40;
 
 // The x of each lane, spread evenly across the screen, indexed by Scrap.lane.
 const LANE_X = Array.from({ length: LANE_COUNT }, (_, lane) => (WIDTH / LANE_COUNT) * (lane + 0.5));
+// How far a scrap can sit left or right of its lane's center (see Scrap.nudge).
+// Lanes are 160px apart and scraps 80px wide, so two neighbors nudged toward each other
+// still have a 20px gap, and the outer scraps stay on screen. Keep
+// 2 × MAX_NUDGE + 2 × SCRAP_RADIUS below the lane spacing if you change LANE_COUNT.
+const MAX_NUDGE = 30;
+
+/** Where a scrap's center is across the screen: its lane's center plus its nudge. */
+function scrapX(scrap: Scrap): number {
+  return LANE_X[scrap.lane] + scrap.nudge * MAX_NUDGE;
+}
 
 /**
  * Black and white, plain shapes only. The target scrap has a thick outline.
@@ -24,6 +34,9 @@ export class ScrapShooterView implements View {
   private inputText!: Konva.Text;
   private waveText!: Konva.Text;
   private healthBar!: Konva.Group;
+  private scrapLayer!: Konva.Group; // the scraps, kept under the pause overlay
+  private pauseOverlay!: Konva.Group;
+  private pauseLabel!: Konva.Text;
 
   getGroup(): Konva.Group {
     return this.group;
@@ -37,7 +50,12 @@ export class ScrapShooterView implements View {
     this.group.hide();
   }
 
-  build(onBack: () => void): void {
+  /**
+   * Draws the game screen.
+   * @param onBack called when Back is clicked
+   * @param onPause called when Pause (or Resume) is clicked
+   */
+  build(onBack: () => void, onPause: () => void): void {
     this.inputBox = new Konva.Rect({
       x: WIDTH / 2 - 120,
       y: 520,
@@ -82,10 +100,26 @@ export class ScrapShooterView implements View {
 
     this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
+    this.scrapLayer = new Konva.Group();
+    this.pauseOverlay = this.makePauseOverlay(onPause);
+
     this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.inputBox, this.inputText, this.waveText, this.healthBar);
+    this.group.add(this.scrapLayer, this.inputBox, this.inputText, this.waveText, this.healthBar);
+    this.group.add(this.pauseOverlay); // above the game, below the buttons so they still work
     this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
+
+    // Bottom-right, across from Back: up top it would sit under scraps falling in the right lane.
+    const pauseButton = makeButton(WIDTH - 120, 536, 'Pause', onPause, '#6b7280', 100);
+    this.pauseLabel = pauseButton.findOne<Konva.Text>('Text')!;
+    this.group.add(pauseButton);
+  }
+
+  /** Shows or hides the PAUSED overlay, and switches the Pause button's label to match. */
+  showPaused(paused: boolean): void {
+    this.pauseOverlay.visible(paused);
+    this.pauseLabel.text(paused ? 'Resume' : 'Pause');
+    this.group.getLayer()?.batchDraw();
   }
 
   destroy(): void {
@@ -128,15 +162,47 @@ export class ScrapShooterView implements View {
     );
   }
 
+  /**
+   * A dark cover over the game with PAUSED and a Resume button. It catches clicks, so
+   * nothing under it can be clicked while the game is paused. Hidden until showPaused(true).
+   */
+  private makePauseOverlay(onResume: () => void): Konva.Group {
+    const overlay = new Konva.Group({ visible: false });
+    overlay.add(
+      new Konva.Rect({ width: WIDTH, height: HEIGHT, fill: 'black', opacity: 0.75 }),
+      new Konva.Text({
+        y: 200,
+        width: WIDTH,
+        align: 'center',
+        text: 'PAUSED',
+        fontSize: 56,
+        fontStyle: 'bold',
+        fill: 'white',
+        listening: false,
+      }),
+      new Konva.Text({
+        y: 272,
+        width: WIDTH,
+        align: 'center',
+        text: 'Press Esc or P to keep playing',
+        fontSize: 18,
+        fill: '#d1d5db',
+        listening: false,
+      }),
+      makeButton(WIDTH / 2 - 75, 320, 'Resume', onResume, '#4f46e5', 150),
+    );
+    return overlay;
+  }
+
   private addScrap(scrap: Scrap): { group: Konva.Group; body: Konva.Circle } {
-    const group = new Konva.Group({ x: LANE_X[scrap.lane], y: scrap.y });
+    const group = new Konva.Group({ x: scrapX(scrap), y: scrap.y });
     const body = new Konva.Circle({ radius: SCRAP_RADIUS, fill: 'black', stroke: 'white', strokeWidth: 2 });
     const label = new Konva.Text({ text: scrap.question.prompt, fontSize: 20, fill: 'white' });
     label.offsetX(label.width() / 2);
     label.offsetY(label.height() / 2);
 
     group.add(body, label);
-    this.group.add(group);
+    this.scrapLayer.add(group);
     const shape = { group, body };
     this.scrapGroups.set(scrap.id, shape);
     return shape;
@@ -196,7 +262,7 @@ export class ScrapShooterView implements View {
   /** Draws a quick line from the ship to the scrap that was hit. */
   shoot(scrap: Scrap): void {
     const shot = new Konva.Line({
-      points: [SHIP.x, SHIP.y - 30, LANE_X[scrap.lane], scrap.y],
+      points: [SHIP.x, SHIP.y - 30, scrapX(scrap), scrap.y],
       stroke: 'white',
       strokeWidth: 3,
     });

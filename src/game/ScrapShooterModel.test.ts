@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRONT_LINE_Y, MAX_HEALTH, SPAWN_Y, ScrapShooterModel } from './ScrapShooterModel';
+import { FRONT_LINE_Y, LANE_COUNT, MAX_HEALTH, SPAWN_Y, ScrapShooterModel } from './ScrapShooterModel';
 import { TOTAL_WAVES, waveSettings } from './logic/waves';
 
 const STEP = 0.1; // seconds per tick, about what the game loop does
@@ -70,6 +70,47 @@ describe('ScrapShooterModel scoring', () => {
     run(model, 5);
     answerWrong(model);
     expect(model.getAccuracy()).toBe(67);
+  });
+
+  it('counts a scrap that reaches the front line as a wrong answer', () => {
+    const model = newModel();
+    answerRight(model); // 1 of 1
+    const secondsToFall = (FRONT_LINE_Y - SPAWN_Y) / waveSettings(1, 1).speed;
+    let missed = 0;
+    for (let t = 0; t < secondsToFall * 3 && missed === 0; t += STEP) missed += model.tick(STEP).missed.length;
+    expect(missed).toBe(1);
+    expect(model.getAccuracy()).toBe(50); // 1 right, 1 missed
+  });
+
+  it('counts a wrong answer then the right one as one wrong scrap', () => {
+    const model = newModel();
+    answerWrong(model);
+    answerWrong(model);
+    answerRight(model); // the same scrap, finally shot
+    expect(model.getScore()).toBe(1); // the score still counts the shot
+    expect(model.getAccuracy()).toBe(0); // 0 of 1 right on the first try
+    run(model, 5);
+    answerRight(model);
+    expect(model.getAccuracy()).toBe(50); // 1 of 2
+  });
+
+  it('counts a scrap answered wrong and then missed only once', () => {
+    const model = newModel();
+    answerRight(model); // 1 of 1
+    run(model, 5); // the next scrap appears
+    expect(answerWrong(model).type).toBe('incorrect'); // the next scrap: 1 of 2
+    expect(model.getAccuracy()).toBe(50);
+    const secondsToFall = (FRONT_LINE_Y - SPAWN_Y) / waveSettings(1, 1).speed;
+    let missed = 0;
+    for (let t = 0; t < secondsToFall * 3 && missed === 0; t += STEP) missed += model.tick(STEP).missed.length;
+    expect(missed).toBe(1);
+    expect(model.getAccuracy()).toBe(50); // still 1 of 2, not 1 of 3
+  });
+
+  it('has 0 accuracy when every scrap is missed', () => {
+    const model = newModel();
+    loseAllHealth(model);
+    expect(model.getAccuracy()).toBe(0);
   });
 
   it('reports which scrap a wrong answer was for and what was typed', () => {
@@ -209,6 +250,26 @@ describe('ScrapShooterModel falling scraps', () => {
         }
       }
     }
+  });
+});
+
+describe('ScrapShooterModel scrap positions', () => {
+  it('uses every lane and nudges each scrap by at most a full step either way', () => {
+    // A seeded "random" source, so the test gives the same result every run.
+    let seed = 1;
+    const seeded = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const model = new ScrapShooterModel('multiplication', 10, seeded); // level 10 sends plenty of scraps
+    const lanes = new Set<number>();
+    for (let t = 0; t < 120 && !model.isLost(); t += STEP) {
+      model.tick(STEP);
+      for (const scrap of model.getScraps()) {
+        lanes.add(scrap.lane);
+        expect(scrap.nudge).toBeGreaterThanOrEqual(-1);
+        expect(scrap.nudge).toBeLessThanOrEqual(1);
+      }
+      if (model.getTarget()) answerRight(model);
+    }
+    expect(lanes.size).toBe(LANE_COUNT);
   });
 });
 

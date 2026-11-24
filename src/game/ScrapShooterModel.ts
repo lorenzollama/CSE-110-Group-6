@@ -1,8 +1,8 @@
 import type { Topic } from '../types';
-import { isCorrect, makeQuestionForTopic, type Question } from './logic/questions';
+import { factorRangeForLevel, isCorrect, makeQuestionForTopic, type FactorRange, type Question } from './logic/questions';
 import { TOTAL_WAVES, waveSettings, type WaveSettings } from './logic/waves';
 
-export const LANE_COUNT = 4;
+export const LANE_COUNT = 5;
 export const MAX_HEALTH = 3;
 /** Screen y where a new scrap appears. */
 export const SPAWN_Y = 90;
@@ -19,6 +19,7 @@ export interface Scrap {
   id: number;
   question: Question;
   lane: number; // which column it falls down (the view decides where that is)
+  nudge: number; // -1 to 1: how far left or right of its column's center it sits, so the columns don't look too neat
   y: number; // screen y, grows as it falls
 }
 
@@ -45,7 +46,10 @@ export class ScrapShooterModel {
   private scraps: Scrap[] = [];
   private typed = '';
   private correct = 0;
-  private answered = 0;
+  // Accuracy counts each scrap once, by its first answer (see getAccuracy).
+  private judged = 0; // scraps that got a first answer or were missed without one
+  private rightFirstTry = 0; // scraps whose first answer was right
+  private tried = new Set<number>(); // ids of scraps on screen that already had a wrong answer
   private health = MAX_HEALTH;
   private wave = 1;
   private settings: WaveSettings;
@@ -53,12 +57,14 @@ export class ScrapShooterModel {
   private spawnIn = 0; // seconds until the next one
   private breakLeft = 0; // seconds left before the next wave starts
   private nextId = 1;
+  private factors: FactorRange; // how big this level's numbers get
 
   constructor(
     private topic: Topic = 'multiplication',
     private level = 1,
     private rng: () => number = Math.random,
   ) {
+    this.factors = factorRangeForLevel(level);
     this.settings = waveSettings(level, this.wave);
     this.startWave();
     this.spawnNext(); // so the player has something to shoot right away
@@ -100,9 +106,13 @@ export class ScrapShooterModel {
     return this.wave;
   }
 
-  /** Percent of answers that were right, 0-100. */
+  /**
+   * Percent of scraps answered right on the first try, 0-100. Each scrap counts once:
+   * wrong then right is 0 of 1, and a scrap that reaches the front line without an answer
+   * counts as wrong too. (The score still counts every scrap shot, retries included.)
+   */
   getAccuracy(): number {
-    return this.answered === 0 ? 0 : Math.round((this.correct / this.answered) * 100);
+    return this.judged === 0 ? 0 : Math.round((this.rightFirstTry / this.judged) * 100);
   }
 
   /** True when the last wave is cleared. */
@@ -132,13 +142,20 @@ export class ScrapShooterModel {
     }
     const value = this.typed;
     this.typed = '';
-    this.answered++;
+    const right = isCorrect(target.question, value);
+    const firstTry = !this.tried.has(target.id);
+    if (firstTry) {
+      this.judged++;
+      if (right) this.rightFirstTry++;
+    }
 
-    if (isCorrect(target.question, value)) {
+    if (right) {
       this.correct++;
+      this.tried.delete(target.id);
       this.scraps = this.scraps.filter(scrap => scrap !== target);
       return { type: 'correct', hit: target };
     }
+    this.tried.add(target.id);
     return { type: 'incorrect', target, answer: value };
   }
 
@@ -162,7 +179,11 @@ export class ScrapShooterModel {
 
     result.missed = this.scraps.filter(scrap => scrap.y >= FRONT_LINE_Y);
     this.scraps = this.scraps.filter(scrap => scrap.y < FRONT_LINE_Y);
-    result.missed.forEach(() => this.loseHealth());
+    for (const scrap of result.missed) {
+      this.loseHealth();
+      // A miss counts as wrong, unless the scrap already counted as wrong for its first answer.
+      if (!this.tried.delete(scrap.id)) this.judged++;
+    }
   }
 
   private advanceWave(seconds: number, result: TickResult): void {
@@ -205,8 +226,9 @@ export class ScrapShooterModel {
 
     const scrap: Scrap = {
       id: this.nextId++,
-      question: makeQuestionForTopic(this.topic, this.rng),
+      question: makeQuestionForTopic(this.topic, this.rng, this.factors),
       lane: freeLanes[Math.floor(this.rng() * freeLanes.length)],
+      nudge: this.rng() * 2 - 1,
       y: SPAWN_Y,
     };
     this.scraps.push(scrap);
