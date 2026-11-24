@@ -36,6 +36,13 @@ const DISPLAY_HEIGHT = BOARD_SIZE;
 const DISPLAY_PADDING = 16; // space between the edge of the screen and its text
 const PAGE_Y = DISPLAY_Y + 100; // where the page starts, under the power level and base
 
+// What the display says when a game starts, with a blank line between each one
+const INSTRUCTIONS = [
+  "HOW TO PLAY",
+  "Slide the tiles with the arrow keys or WASD. Two tiles with the same number merge.",
+  "Every few moves a question comes up here. Type the answer and press Enter.",
+];
+
 // The New game button, on the display when the game is over
 const NEW_GAME_BUTTON_WIDTH = 180;
 const NEW_GAME_BUTTON_HEIGHT = 56;
@@ -80,6 +87,7 @@ export class Minigame2View implements View {
   private questionPage: Konva.Group;
   private questionText: Konva.Text;
   private answerText: Konva.Text;
+  private instructionsText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -112,6 +120,10 @@ export class Minigame2View implements View {
     this.answerText = createDisplayText(PAGE_Y + 90, 40, "normal");
     this.questionPage = createQuestionPage(this.questionText, this.answerText);
     this.group.add(this.questionPage);
+
+    this.instructionsText = createDisplayText(PAGE_Y, 18, "normal");
+    this.instructionsText.text(INSTRUCTIONS.join("\n\n"));
+    this.group.add(this.instructionsText);
   }
 
   /**
@@ -125,6 +137,7 @@ export class Minigame2View implements View {
     this.questionText.text(state.question ?? "");
     this.questionPage.visible(page === "question");
     this.gameOverPage.visible(page === "gameOver");
+    this.instructionsText.visible(page === "instructions");
     this.group.getLayer()?.batchDraw();
   }
 
