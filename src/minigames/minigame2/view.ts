@@ -25,6 +25,7 @@ const FRAME_COLOR = "#cbd5e1";
 const FRAME = 8; // how thick the frame is
 const TEXT_COLOR = "#2b2d42";
 const SCREEN_TEXT_COLOR = "#e2e8f0"; // light text on the screens
+const WALL_COLOR = "#f1f5f9"; // off-white, like the inside of a modern spaceship
 
 // The display, right of the board and as tall as it. The power level and base are
 // always at the top, and the page under them shows one thing at a time.
@@ -78,6 +79,8 @@ export class Minigame2View implements View {
 
   constructor() {
     this.group = new Konva.Group();
+    // the wall goes first, so it is behind everything
+    this.group.add(new Konva.Rect({ width: STAGE_WIDTH, height: STAGE_HEIGHT, fill: WALL_COLOR }));
     this.drawEmptyGrid();
 
     // tiles get their own group so they can be cleared and redrawn after every move
