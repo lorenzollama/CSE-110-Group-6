@@ -41,6 +41,10 @@ const NEW_GAME_BUTTON_WIDTH = 180;
 const NEW_GAME_BUTTON_HEIGHT = 56;
 const BUTTON_COLOR = "#2563eb"; // blue, so it stands out on the dark screen
 
+// The sign under the board
+const SIGN_Y = BOARD_Y + BOARD_SIZE + FRAME + 16;
+const SIGN_HEIGHT = 44;
+
 // Each base gets its own hue (degrees on the color wheel)
 const BASE_HUES: Record<number, number> = {
   2: 0, // red
@@ -87,6 +91,7 @@ export class Minigame2View implements View {
     this.tiles = new Konva.Group();
     this.group.add(this.tiles);
 
+    this.group.add(createSign());
     this.group.add(createScreen(DISPLAY_X, DISPLAY_Y, DISPLAY_WIDTH, DISPLAY_HEIGHT));
     this.scoreText = createDisplayText(DISPLAY_Y + 20, 26, "bold");
     this.baseText = createDisplayText(DISPLAY_Y + 56, 20, "normal");
@@ -340,4 +345,23 @@ function createQuestionPage(questionText: Konva.Text, answerText: Konva.Text): K
   hint.text("Type the answer, then press Enter");
   page.add(questionText, answerText, hint);
   return page;
+}
+
+// A light grey plate under the board that says "POWER SYSTEM"
+function createSign(): Konva.Group {
+  const sign = new Konva.Group({ x: BOARD_X, y: SIGN_Y });
+  sign.add(new Konva.Rect({ width: BOARD_SIZE, height: SIGN_HEIGHT, fill: FRAME_COLOR, cornerRadius: 6 }));
+  sign.add(new Konva.Text({
+    width: BOARD_SIZE,
+    height: SIGN_HEIGHT,
+    text: "POWER SYSTEM",
+    fontSize: 24,
+    fontStyle: "bold",
+    fontFamily: "Arial",
+    letterSpacing: 4,
+    fill: TEXT_COLOR,
+    align: "center",
+    verticalAlign: "middle",
+  }));
+  return sign;
 }
