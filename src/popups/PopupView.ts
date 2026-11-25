@@ -1,7 +1,7 @@
 import Konva from "konva";
 import type { LevelCompleteInfo, WrongAnswerInfo , GameOverInfo} from "./PopupModel";
 import { sounds } from "../audio/sounds";
-import { useTitleFont } from "../screens/shared/space";
+import { GAME_FONT, useTitleFont } from "../screens/shared/space";
 import { SHADOW, darkLook, makePressable, type PressableLook } from "../screens/shared/pressable";
 
 /** What the level-complete popup's two buttons do. */
@@ -46,11 +46,11 @@ export class PopupView {
     const title = popupTitle("NOT QUITE!", 24, W, 26, RED.accent);
     box.add(title);
     box.add(new Konva.Text({
-      x: 30, y: 72, width: W - 60, fontSize: 18, lineHeight: 1.5, fill: "#e2e8f0",
+      x: 30, y: 72, width: W - 60, fontSize: 15, lineHeight: 1.6, fill: "#e2e8f0", fontFamily: GAME_FONT,
       text: `Question: ${info.question}\nYou answered: ${info.playerAnswer}\nCorrect answer: ${info.correctAnswer}`,
     }));
     box.add(new Konva.Text({
-      x: 30, y: 162, width: W - 60, fontSize: 16, lineHeight: 1.4, fill: "#94a3b8",
+      x: 30, y: 158, width: W - 60, fontSize: 13, lineHeight: 1.5, fill: "#94a3b8", fontFamily: GAME_FONT,
       text: `Why: ${info.explanation}`,   // wraps automatically because width is set
     }));
 
@@ -67,7 +67,7 @@ export class PopupView {
     const title = popupTitle("CONGRATS!", 28, W, 32, GREEN.accent);
     box.add(title);
     box.add(new Konva.Text({
-      y: 82, width: W, fontSize: 20, align: "center", fill: "#e2e8f0",
+      y: 82, width: W, fontSize: 17, align: "center", fill: "#e2e8f0", fontFamily: GAME_FONT,
       text: `You passed Level ${info.level}`,
     }));
     box.add(scoreText(info.score, info.accuracy, W));
@@ -83,7 +83,7 @@ export class PopupView {
     const title = popupTitle("GAME OVER!", 28, W, 32, RED.accent);
     box.add(title);
     box.add(new Konva.Text({
-      y: 82, width: W, fontSize: 20, align: "center", fill: "#e2e8f0",
+      y: 82, width: W, fontSize: 17, align: "center", fill: "#e2e8f0", fontFamily: GAME_FONT,
       text: `You ran out of fuel!`,
     }));
     box.add(scoreText(info.score, info.accuracy, W));
@@ -150,7 +150,7 @@ export class PopupView {
 /** A popup's glowing title, centered across the panel. */
 function popupTitle(text: string, y: number, width: number, fontSize: number, color: string): Konva.Text {
   return new Konva.Text({
-    y, width, text, fontSize, fontStyle: "bold", fontFamily: "Arial", letterSpacing: 2,
+    y, width, text, fontSize, fontStyle: "bold", fontFamily: GAME_FONT, letterSpacing: 2,
     fill: color, align: "center", shadowColor: color, shadowBlur: 14, shadowOpacity: 0.8,
     listening: false,
   });
@@ -159,7 +159,7 @@ function popupTitle(text: string, y: number, width: number, fontSize: number, co
 /** The "Score" and "Accuracy" lines on the level-complete and game-over popups. */
 function scoreText(score: number, accuracy: number, width: number): Konva.Text {
   return new Konva.Text({
-    y: 124, width, fontSize: 18, align: "center", fill: "#94a3b8", lineHeight: 1.5,
+    y: 124, width, fontSize: 15, align: "center", fill: "#94a3b8", lineHeight: 1.6, fontFamily: GAME_FONT,
     text: `Score: ${score}\nAccuracy: ${accuracy}%`,
   });
 }
@@ -177,7 +177,7 @@ function pop(title: Konva.Text): void {
 /** A small "or press Enter" under a popup's main button (the one Enter presses). */
 function enterHint(x: number, y: number, width = BUTTON_WIDTH): Konva.Text {
   return new Konva.Text({
-    x, y, width, text: "or press Enter", fontSize: 12, fill: "#64748b", align: "center",
+    x, y, width, text: "or press Enter", fontSize: 11, fill: "#64748b", align: "center", fontFamily: GAME_FONT,
     listening: false,
   });
 }
@@ -193,7 +193,7 @@ function popupButton(
   button.group.position({ x, y });
   const label = new Konva.Text({
     width: BUTTON_WIDTH, height: BUTTON_HEIGHT, align: "center", verticalAlign: "middle",
-    text, fontSize: 15, fontStyle: "bold", fontFamily: "Arial", letterSpacing: 2,
+    text, fontSize: 15, fontStyle: "bold", fontFamily: GAME_FONT, letterSpacing: 2,
     fill: "#f1f5f9", listening: false,
   });
   button.face.add(label);

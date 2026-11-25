@@ -1,7 +1,7 @@
 import Konva from 'konva';
 import type { View } from '../types';
 import { FRONT_LINE_Y, LANE_COUNT, type Scrap } from './ScrapShooterModel';
-import { SpaceBackdrop, prefersReducedMotion, useTitleFont } from '../screens/shared/space';
+import { GAME_FONT, SpaceBackdrop, prefersReducedMotion, useTitleFont } from '../screens/shared/space';
 import {
   BACK_BUTTON_HEIGHT,
   BACK_BUTTON_WIDTH,
@@ -125,7 +125,7 @@ export class ScrapShooterView implements View {
       text: '',
       fontSize: 20,
       fontStyle: 'bold',
-      fontFamily: 'Arial',
+      fontFamily: GAME_FONT,
       letterSpacing: 3,
       fill: 'white',
       shadowColor: '#818cf8',
@@ -140,7 +140,7 @@ export class ScrapShooterView implements View {
       text: 'FUEL',
       fontSize: 14,
       fontStyle: 'bold',
-      fontFamily: 'Arial',
+      fontFamily: GAME_FONT,
       letterSpacing: 2,
       fill: '#fdba74',
     });
@@ -274,8 +274,13 @@ export class ScrapShooterView implements View {
         width: WIDTH,
         align: 'center',
         text: 'PAUSED',
-        fontSize: 56,
+        fontSize: 52,
         fontStyle: 'bold',
+        fontFamily: GAME_FONT,
+        letterSpacing: 4,
+        shadowColor: '#818cf8',
+        shadowBlur: 20,
+        shadowOpacity: 0.9,
         fill: 'white',
         listening: false,
       }),
@@ -284,8 +289,10 @@ export class ScrapShooterView implements View {
         width: WIDTH,
         align: 'center',
         text: 'Press Esc or P to keep playing',
-        fontSize: 18,
-        fill: '#d1d5db',
+        fontSize: 15,
+        fontFamily: GAME_FONT,
+        letterSpacing: 1,
+        fill: '#cbd5e1',
         listening: false,
       }),
     );
@@ -325,7 +332,7 @@ export class ScrapShooterView implements View {
       text: '',
       fontSize: 24,
       fontStyle: 'bold',
-      fontFamily: 'Arial',
+      fontFamily: GAME_FONT,
       letterSpacing: 2,
       fill: 'white',
     });
@@ -353,7 +360,15 @@ export class ScrapShooterView implements View {
       listening: false,
     });
 
-    const label = new Konva.Text({ text: scrap.question.prompt, fontSize: 20, fill: 'white', listening: false });
+    // The problem, in the game's font, sized to fit the scrap's dark label band.
+    const label = new Konva.Text({
+      text: scrap.question.prompt,
+      fontSize: 17,
+      fontStyle: 'bold',
+      fontFamily: GAME_FONT,
+      fill: 'white',
+      listening: false,
+    });
     label.offsetX(label.width() / 2);
     label.offsetY(label.height() / 2);
 
@@ -473,7 +488,7 @@ function buttonLabel(text: string, width: number, height: number, fill: string):
     text,
     fontSize: 15,
     fontStyle: 'bold',
-    fontFamily: 'Arial',
+    fontFamily: GAME_FONT,
     letterSpacing: 2,
     fill,
     listening: false,

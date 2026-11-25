@@ -18,6 +18,8 @@ export const STAGE_WIDTH = 800;
 export const STAGE_HEIGHT = 600;
 
 export const TITLE_FONT = "Orbitron"; // loaded in index.html; Arial until it arrives
+/** Orbitron with Arial as a fallback, for text drawn while (or in case) Orbitron hasn't loaded. */
+export const GAME_FONT = `${TITLE_FONT}, Arial, sans-serif`;
 
 /** True if the player asked their computer for less motion; then the sky stays still. */
 export function prefersReducedMotion(): boolean {
