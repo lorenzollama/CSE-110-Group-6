@@ -3,7 +3,7 @@ import type { View } from '../types';
 import { FRONT_LINE_Y, LANE_COUNT, type Scrap } from './ScrapShooterModel';
 import { makeButton } from '../popups/PopupView';
 import { prefersReducedMotion } from '../screens/shared/space';
-import { spriteImage } from './art/draw';
+import { ScrapEffects, spriteImage } from './art/draw';
 import {
   FLAME_ROWS,
   SCRAP_COLORS,
@@ -40,19 +40,19 @@ function scrapX(scrap: Scrap): number {
 
 /**
  * Pixel-art ship and scraps (see art/sprites.ts). The target scrap has a glowing ring, and
- * shooting draws a quick line from the ship to the scrap.
+ * shooting plays a laser, an explosion and a kick on the ship (art/draw.ts).
  * Draws what the controller tells it to; holds no game state.
  */
 export class ScrapShooterView implements View {
   private group = new Konva.Group();
   private scrapGroups = new Map<number, { group: Konva.Group; ring: Konva.Circle }>();
-  private shotTimer: number | undefined;
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
   private inputText!: Konva.Text;
   private waveText!: Konva.Text;
   private healthBar!: Konva.Group;
   private scrapLayer!: Konva.Group; // the scraps, kept under the pause overlay
+  private effects!: ScrapEffects; // the laser and explosions, drawn above the scraps
   private ship!: Konva.Group;
   private flame!: Konva.Image;
   private pauseOverlay!: Konva.Group;
@@ -121,11 +121,13 @@ export class ScrapShooterView implements View {
     this.healthBar = new Konva.Group({ x: 20, y: 16 });
 
     this.scrapLayer = new Konva.Group();
+    const effectsLayer = new Konva.Group({ listening: false });
+    this.effects = new ScrapEffects(effectsLayer);
     this.pauseOverlay = this.makePauseOverlay(onPause);
 
     this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.scrapLayer, this.inputBox, this.inputText, this.waveText, this.healthBar);
+    this.group.add(this.scrapLayer, effectsLayer, this.inputBox, this.inputText, this.waveText, this.healthBar);
     this.group.add(this.pauseOverlay); // above the game, below the buttons so they still work
     this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
 
@@ -143,9 +145,7 @@ export class ScrapShooterView implements View {
   }
 
   destroy(): void {
-    if (this.shotTimer !== undefined) {
-      window.clearTimeout(this.shotTimer);
-    }
+    this.effects?.destroy();
 
     if (this.wrongTimer !== undefined) {
       window.clearTimeout(this.wrongTimer);
@@ -296,19 +296,12 @@ export class ScrapShooterView implements View {
 
   // ------------------------------------------------------------- actions
 
-  /** Draws a quick line from the ship to the scrap that was hit. */
+  /** Fires the laser at a scrap: a beam from the ship's nose, an explosion on the scrap and a kick on the ship. */
   shoot(scrap: Scrap): void {
-    const shot = new Konva.Line({
-      points: [NOSE.x, NOSE.y, scrapX(scrap), scrap.y],
-      stroke: 'white',
-      strokeWidth: 3,
-    });
-    this.group.add(shot);
-    this.shotTimer = window.setTimeout(() => {
-      shot.destroy();
-      this.group.getLayer()?.batchDraw();
-      this.shotTimer = undefined;
-    }, 100);
+    const hit = { x: scrapX(scrap), y: scrap.y };
+    this.effects.fire(NOSE, hit);
+    this.effects.explode(hit);
+    this.effects.recoil(this.ship, SHIP_TOP);
   }
 
   flashWrong(): void {
