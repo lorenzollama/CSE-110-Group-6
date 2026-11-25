@@ -135,3 +135,28 @@ export function scrapSprite(id: number): string[] {
   const scrambled = Math.imul(id, 2654435761) >>> 0; // 0 to 2^32 - 1, spread out
   return SCRAP_SPRITES[Math.floor((scrambled / 2 ** 32) * SCRAP_SPRITES.length)];
 }
+
+// ------------------------------------------------------------------ fuel
+
+/**
+ * The player's health, drawn as rocket-fuel canisters: one per health point. A full one glows
+ * orange like the ship's flame; an empty one is dark. C is the cap, K the metal, F the fuel and
+ * Y its shine, E the inside of an empty canister.
+ */
+export const FUEL_FULL_ROWS: string[] = [
+  '..CCCC..',
+  '.KKKKKK.',
+  'KYYFFFFK',
+  'KYFFFFFK',
+  'KYFFFFFK',
+  'KFFFFFFK',
+  'KFFFFFFK',
+  'KFFFFFFK',
+  'KFFFFFFK',
+  '.KKKKKK.',
+];
+
+export const FUEL_EMPTY_ROWS: string[] = FUEL_FULL_ROWS.map(row => row.replace(/[FY]/g, 'E'));
+
+export const FUEL_COLORS: Record<string, string> = { C: '#94a3b8', K: '#475569', F: '#f97316', Y: '#facc15', E: '#1e293b' };
+export const FUEL_PIXEL = 3; // a canister is 24 × 30

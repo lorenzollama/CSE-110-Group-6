@@ -1,6 +1,8 @@
 import Konva from "konva";
 import type { LevelCompleteInfo, WrongAnswerInfo , GameOverInfo} from "./PopupModel";
 import { sounds } from "../audio/sounds";
+import { useTitleFont } from "../screens/shared/space";
+import { SHADOW, darkLook, makePressable, type PressableLook } from "../screens/shared/pressable";
 
 /** What the level-complete popup's two buttons do. */
 export interface LevelCompleteActions {
@@ -13,8 +15,18 @@ export interface GameOverActions {
   onMenu: () => void;
 }
 
+// Each popup's color, like the menu buttons: an outline and title color, and a darker shadow.
+const RED = { accent: "#f87171", shade: "#7f1d1d" };
+const GREEN = { accent: "#4ade80", shade: "#14532d" };
+const BLUE = { accent: "#38bdf8", shade: "#0c4a6e" };
+const SLATE = { accent: "#64748b", shade: "#1e293b" };
+
+const BUTTON_WIDTH = 150;
+const BUTTON_HEIGHT = 44;
+
 /**
- * Popup VIEW: draws the popups with Konva on the popup layer.
+ * Popup VIEW: draws the popups with Konva on the popup layer, in the game's look: a dark
+ * panel with a glowing colored outline, an Orbitron title, and the menus' pressable buttons.
  * It decides nothing. A button click is only reported by calling the function the view
  * was given; the controller decides what happens (like closing the popup).
  */
@@ -29,79 +41,55 @@ export class PopupView {
   // Shows: "Not quite!", the question, what they typed, the right answer, and WHY.
   showWrongAnswer(info: WrongAnswerInfo, onGotIt: () => void): void {
     const W = 420, H = 320;
-    const box = this.openFrame(W, H);
+    const box = this.openFrame(W, H, RED.accent);
 
+    const title = popupTitle("NOT QUITE!", 24, W, 26, RED.accent);
+    box.add(title);
     box.add(new Konva.Text({
-      y: 22, width: W, text: "Not quite!", fontSize: 28, fontStyle: "bold",
-      fill: "#dc2626", align: "center",
-    }));
-    box.add(new Konva.Text({
-      x: 30, y: 70, width: W - 60, fontSize: 18, lineHeight: 1.5,
+      x: 30, y: 72, width: W - 60, fontSize: 18, lineHeight: 1.5, fill: "#e2e8f0",
       text: `Question: ${info.question}\nYou answered: ${info.playerAnswer}\nCorrect answer: ${info.correctAnswer}`,
     }));
     box.add(new Konva.Text({
-      x: 30, y: 160, width: W - 60, fontSize: 16, lineHeight: 1.4, fill: "#374151",
+      x: 30, y: 162, width: W - 60, fontSize: 16, lineHeight: 1.4, fill: "#94a3b8",
       text: `Why: ${info.explanation}`,   // wraps automatically because width is set
     }));
 
-    box.add(makeButton((W - 150) / 2, H - 66, "Got it", onGotIt));
-    box.add(enterHint((W - 150) / 2, H - 18));
-    this.layer.batchDraw();
+    const gotIt = popupButton((W - BUTTON_WIDTH) / 2, H - 82, "GOT IT", onGotIt, darkLook(BLUE.accent, BLUE.shade));
+    box.add(gotIt.group);
+    box.add(enterHint((W - BUTTON_WIDTH) / 2, H - 24));
+    this.useFont([title, gotIt.label]);
   }
 
   showLevelComplete(info: LevelCompleteInfo, actions: LevelCompleteActions): void {
     const W = 420, H = 300;
-    const box = this.openFrame(W, H);
+    const box = this.openFrame(W, H, GREEN.accent);
 
-    const title = new Konva.Text({
-      y: 28, width: W, text: "🎉 Congrats!", fontSize: 34, fontStyle: "bold",
-      fill: "#16a34a", align: "center",
-    });
+    const title = popupTitle("CONGRATS!", 28, W, 32, GREEN.accent);
     box.add(title);
     box.add(new Konva.Text({
-      y: 80, width: W, fontSize: 20, align: "center",
+      y: 82, width: W, fontSize: 20, align: "center", fill: "#e2e8f0",
       text: `You passed Level ${info.level}`,
     }));
-    box.add(new Konva.Text({
-      y: 125, width: W, fontSize: 18, align: "center", fill: "#374151", lineHeight: 1.5,
-      text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
-    }));
-    box.add(makeButton(40, H - 70, "Next level", actions.onNextLevel, "#16a34a"));
-    box.add(enterHint(40, H - 22));
-    box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
-    //pop up on the title
-    title.scale({ x: 0.6, y: 0.6 });
-    new Konva.Tween({ node: title, scaleX: 1, scaleY: 1, duration: 0.3, easing: Konva.Easings.BackEaseOut }).play();
-    this.layer.batchDraw();
+    box.add(scoreText(info.score, info.accuracy, W));
+    const labels = this.addTwoButtons(box, H, "NEXT LEVEL", actions.onNextLevel, actions.onMenu);
+    this.useFont([title, ...labels]);
+    pop(title);
   }
 
   showGameOver(info: GameOverInfo, actions: GameOverActions): void {
     const W = 420, H = 300;
-    const box = this.openFrame(W, H);
+    const box = this.openFrame(W, H, RED.accent);
 
-    const title = new Konva.Text({
-      y: 28, width: W, text: "GAME OVER!", fontSize: 34, fontStyle: "bold",
-      fill: "#dc2626", align: "center",
-    });
+    const title = popupTitle("GAME OVER!", 28, W, 32, RED.accent);
     box.add(title);
     box.add(new Konva.Text({
-      y: 80, width: W, fontSize: 20, align: "center",
-      text: `You ran out of health!`,
+      y: 82, width: W, fontSize: 20, align: "center", fill: "#e2e8f0",
+      text: `You ran out of fuel!`,
     }));
-    box.add(new Konva.Text({
-      y: 125, width: W, fontSize: 18, align: "center", fill: "#374151", lineHeight: 1.5,
-      text: `Score: ${info.score}\nAccuracy: ${info.accuracy}%`,
-    }));
-
-    box.add(makeButton(40, H - 70, "Try again", actions.onTryAgain, "#16a34a"));
-    box.add(enterHint(40, H - 22));
-    box.add(makeButton(230, H - 70, "Menu", actions.onMenu, "#6b7280"));
-
-    // small "pop" on the title
-    title.scale({ x: 0.6, y: 0.6 });
-    new Konva.Tween({ node: title, scaleX: 1, scaleY: 1, duration: 0.3, easing: Konva.Easings.BackEaseOut }).play();
-
-    this.layer.batchDraw();
+    box.add(scoreText(info.score, info.accuracy, W));
+    const labels = this.addTwoButtons(box, H, "TRY AGAIN", actions.onTryAgain, actions.onMenu);
+    this.useFont([title, ...labels]);
+    pop(title);
   }
 
   close(): void {
@@ -112,17 +100,40 @@ export class PopupView {
     this.layer.batchDraw();
   }
 
-  // Dark background + centered white box. Every popup uses this so they all look the same.
-  // Returns the box, for the popup to add its text and buttons to.
-  private openFrame(boxW: number, boxH: number): Konva.Group {
+  /**
+   * The main button (green, the one Enter presses) on the left with its hint, and MENU on the
+   * right. Returns their labels, to switch to Orbitron.
+   */
+  private addTwoButtons(
+    box: Konva.Group, H: number, mainText: string, onMain: () => void, onMenu: () => void,
+  ): Konva.Text[] {
+    const main = popupButton(40, H - 82, mainText, onMain, darkLook(GREEN.accent, GREEN.shade));
+    const menu = popupButton(230, H - 82, "MENU", onMenu, darkLook(SLATE.accent, SLATE.shade));
+    box.add(main.group, menu.group, enterHint(40, H - 24));
+    return [main.label, menu.label];
+  }
+
+  /** Draws the popup, then switches the given texts to Orbitron (see useTitleFont). */
+  private useFont(texts: Konva.Text[]): void {
+    this.layer.batchDraw();
+    useTitleFont(texts, () => this.layer.batchDraw());
+  }
+
+  // Dark background + centered dark panel with a glowing outline. Every popup uses this so
+  // they all look the same. Returns the panel, for the popup to add its text and buttons to.
+  private openFrame(boxW: number, boxH: number, accent: string): Konva.Group {
     const { width, height } = this.layer.getStage().size();
     const root = new Konva.Group();
-    root.add(new Konva.Rect({ width, height, fill: "black", opacity: 0.55 })); // blocks clicks to the game
+    root.add(new Konva.Rect({ width, height, fill: "black", opacity: 0.6 })); // blocks clicks to the game
 
     const box = new Konva.Group({ x: (width - boxW) / 2, y: (height - boxH) / 2 });
     box.add(new Konva.Rect({
-      width: boxW, height: boxH, fill: "white", cornerRadius: 16,
-      shadowColor: "black", shadowBlur: 20, shadowOpacity: 0.3,
+      x: SHADOW, y: SHADOW, width: boxW, height: boxH, cornerRadius: 6, fill: "#020617",
+    }));
+    box.add(new Konva.Rect({
+      width: boxW, height: boxH, cornerRadius: 6, fill: "#0f172a",
+      stroke: accent, strokeWidth: 3,
+      shadowColor: accent, shadowBlur: 24, shadowOpacity: 0.6,
     }));
     root.add(box);
 
@@ -136,29 +147,55 @@ export class PopupView {
   }
 }
 
-/** A small "or press Enter" under a popup's main button (the one Enter presses). */
-function enterHint(x: number, y: number, width = 150): Konva.Text {
+/** A popup's glowing title, centered across the panel. */
+function popupTitle(text: string, y: number, width: number, fontSize: number, color: string): Konva.Text {
   return new Konva.Text({
-    x, y, width, text: "or press Enter", fontSize: 12, fill: "#6b7280", align: "center",
+    y, width, text, fontSize, fontStyle: "bold", fontFamily: "Arial", letterSpacing: 2,
+    fill: color, align: "center", shadowColor: color, shadowBlur: 14, shadowOpacity: 0.8,
     listening: false,
   });
 }
 
-/** A rounded button. Exported so other views (like the start screen) can use the same button. */
-export function makeButton(
-  x: number, y: number, label: string, onClick: () => void,
-  color = "#4f46e5", width = 150
-): Konva.Group {
-  const group = new Konva.Group({ x, y });
-  group.add(new Konva.Rect({ width, height: 44, fill: color, cornerRadius: 10 }));
-  group.add(new Konva.Text({
-    width, y: 13, text: label, fontSize: 18, fill: "white", align: "center",
-  }));
-  group.on("click tap", () => {
-    sounds.playClick(); // every button blips (unless sound is muted)
+/** The "Score" and "Accuracy" lines on the level-complete and game-over popups. */
+function scoreText(score: number, accuracy: number, width: number): Konva.Text {
+  return new Konva.Text({
+    y: 124, width, fontSize: 18, align: "center", fill: "#94a3b8", lineHeight: 1.5,
+    text: `Score: ${score}\nAccuracy: ${accuracy}%`,
+  });
+}
+
+/** A small "pop" on a title as the popup opens, growing from its middle. */
+function pop(title: Konva.Text): void {
+  title.offsetY(title.height() / 2);
+  title.y(title.y() + title.height() / 2);
+  title.offsetX(title.width() / 2);
+  title.x(title.width() / 2);
+  title.scale({ x: 0.6, y: 0.6 });
+  new Konva.Tween({ node: title, scaleX: 1, scaleY: 1, duration: 0.3, easing: Konva.Easings.BackEaseOut }).play();
+}
+
+/** A small "or press Enter" under a popup's main button (the one Enter presses). */
+function enterHint(x: number, y: number, width = BUTTON_WIDTH): Konva.Text {
+  return new Konva.Text({
+    x, y, width, text: "or press Enter", fontSize: 12, fill: "#64748b", align: "center",
+    listening: false,
+  });
+}
+
+/** One of the menus' pressable buttons with a centered label. Every click blips (unless muted). */
+function popupButton(
+  x: number, y: number, text: string, onClick: () => void, look: PressableLook,
+): { group: Konva.Group; label: Konva.Text } {
+  const button = makePressable(BUTTON_WIDTH, BUTTON_HEIGHT, look, () => {
+    sounds.playClick();
     onClick();
   });
-  group.on("mouseenter", () => { document.body.style.cursor = "pointer"; });
-  group.on("mouseleave", () => { document.body.style.cursor = "default"; });
-  return group;
+  button.group.position({ x, y });
+  const label = new Konva.Text({
+    width: BUTTON_WIDTH, height: BUTTON_HEIGHT, align: "center", verticalAlign: "middle",
+    text, fontSize: 15, fontStyle: "bold", fontFamily: "Arial", letterSpacing: 2,
+    fill: "#f1f5f9", listening: false,
+  });
+  button.face.add(label);
+  return { group: button.group, label };
 }
