@@ -170,6 +170,13 @@ export class Minigame2View implements View {
     this.newGameButton.on("click tap", handler);
   }
 
+  /**
+   * Runs the handler when the player clicks the Back button
+   */
+  onBackClick(handler: () => void): void {
+    this.backButton.on("click tap", handler);
+  }
+
   // Draws the board's screen and the empty cells (done once)
   private drawEmptyGrid(): void {
     this.group.add(createScreen(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE));

@@ -1,4 +1,4 @@
-import { ScreenController } from "../../types.ts";
+import { ScreenController, type ScreenSwitcher } from "../../types.ts";
 import type { Direction, GameLogic, GameState } from "./types.ts";
 import type { Minigame2View } from "./view.ts";
 
@@ -38,11 +38,13 @@ const MAX_ANSWER_DIGITS = 7;
  * Minigame2Controller - connects the game logic to the view
  *
  * It starts new games and turns key presses into moves. While a question is
- * up, the keys type the answer instead.
+ * up, the keys type the answer instead. The Back button goes to the main menu.
  */
 export class Minigame2Controller extends ScreenController {
   private game: GameLogic;
   private view: Minigame2View;
+  // the App, which switches between the main menu and the games
+  private screenSwitcher: ScreenSwitcher;
   // addEventListener and removeEventListener need the same function, so it is made once here
   private onKeyDown = (event: KeyboardEvent): void => this.handleKeyDown(event);
   // the question being asked, or null when the board can move
@@ -50,11 +52,13 @@ export class Minigame2Controller extends ScreenController {
   // the digits typed so far for the current question
   private typed = "";
 
-  constructor(game: GameLogic, view: Minigame2View) {
+  constructor(game: GameLogic, view: Minigame2View, screenSwitcher: ScreenSwitcher) {
     super();
     this.game = game;
     this.view = view;
+    this.screenSwitcher = screenSwitcher;
     this.view.onNewGameClick(() => this.startNewGame());
+    this.view.onBackClick(() => this.screenSwitcher.switchToScreen({ type: "menu" }));
   }
 
   /**

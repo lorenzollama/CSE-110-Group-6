@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 import { keyToDirection, Minigame2Controller } from "./controller.ts";
 import type { GameState } from "./types.ts";
 import type { Minigame2View } from "./view.ts";
@@ -23,9 +23,10 @@ const STATE_AFTER_MOVE: GameState = {
 // so these tests need no browser, no Konva and no real game logic.
 function setup() {
   const game = { newGame: vi.fn(), move: vi.fn(() => STATE_AFTER_MOVE), answer: vi.fn() };
-  const view = { draw: vi.fn(), drawAnswer: vi.fn(), onNewGameClick: vi.fn() };
-  const controller = new Minigame2Controller(game, view as unknown as Minigame2View);
-  return { game, view, controller };
+  const view = { draw: vi.fn(), drawAnswer: vi.fn(), onNewGameClick: vi.fn(), onBackClick: vi.fn() };
+  const screenSwitcher = { switchToScreen: vi.fn() }; // stands in for the App
+  const controller = new Minigame2Controller(game, view as unknown as Minigame2View, screenSwitcher);
+  return { game, view, screenSwitcher, controller };
 }
 
 // Sends the controller a pretend keydown event with only the parts it reads
@@ -189,5 +190,39 @@ describe("Minigame2Controller while a question is up", () => {
     pressKey(controller, "ArrowLeft");
 
     expect(game.move).toHaveBeenCalledWith("left");
+  });
+});
+
+// Clicks the Back button by running the function the controller gave to onBackClick()
+function clickBack(view: { onBackClick: Mock }) {
+  const handler = view.onBackClick.mock.calls[0][0];
+  handler();
+}
+
+describe("Minigame2Controller Back button", () => {
+  it("goes to the main menu when Back is clicked", () => {
+    const { view, screenSwitcher } = setup();
+
+    clickBack(view);
+
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledWith({ type: "menu" });
+  });
+
+  it("stays on the game until Back is clicked", () => {
+    const { screenSwitcher, controller } = setup();
+
+    pressKey(controller, "ArrowLeft");
+    pressKey(controller, "Escape");
+
+    expect(screenSwitcher.switchToScreen).not.toHaveBeenCalled();
+  });
+
+  it("goes back even while a question is up", () => {
+    const { view, screenSwitcher, controller } = setupWithQuestion();
+
+    pressKey(controller, "3");
+    clickBack(view);
+
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledWith({ type: "menu" });
   });
 });
