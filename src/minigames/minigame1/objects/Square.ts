@@ -128,6 +128,18 @@ export class Square {
 		this.parent.getLayer()?.batchDraw();
 	}
 
+	/** Ends a blink early: back to the idle color, sound stopped, and its onComplete never runs. */
+	stopBlink(): void {
+		if (this.blinkTimer !== undefined) {
+			clearTimeout(this.blinkTimer);
+			this.blinkTimer = undefined;
+		}
+		this.blinkAudio.pause();
+		this.isBlinking = false;
+		this.rect.fill(this.isHovered ? "gray" : this.idleFill);
+		this.parent.getLayer()?.batchDraw();
+	}
+
 	// blink
 	blink(onComplete?: () => void, playAudio: boolean = true, blinkDuration: number = 1): void {
 		this.isBlinking = true;

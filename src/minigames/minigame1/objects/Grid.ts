@@ -138,6 +138,19 @@ export class Grid {
 		blinkNext();
 	}
 
+	/** Stops a sequence that is playing, e.g. when the player leaves mid-game. Its onComplete never runs. */
+	stopBlinking(): void {
+		if (this.gapTimer !== undefined) {
+			clearTimeout(this.gapTimer);
+			this.gapTimer = undefined;
+		}
+		for (const row of this.squares) {
+			for (const square of row) {
+				square.stopBlink();
+			}
+		}
+	}
+
 	// remove grids and squares
 	destroy(): void {
 		if (this.gapTimer !== undefined) {

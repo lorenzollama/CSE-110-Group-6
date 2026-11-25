@@ -26,7 +26,7 @@ export class GameScreenController extends ScreenController {
 		this.screenSwitcher = screenSwitcher;
 
 		this.model = new GameScreenModel();
-		this.view = new GameScreenView(stage);
+		this.view = new GameScreenView(stage, () => this.quitGame());
 
 		this.correctAudio = new Audio('/minigame1/correct.mp3');
 		this.incorrectAudio = new Audio('/minigame1/incorrect.mp3');
@@ -86,11 +86,12 @@ export class GameScreenController extends ScreenController {
 				this.correctAudio.currentTime = 0;
 				this.correctAudio.play();
 
-				setTimeout(() => {
+				// scheduled for this game only, so leaving mid-way doesn't start the next round
+				this.scheduleForCurrentGame(() => {
 					this.roundCompleteAudio.currentTime = 0;
 					this.roundCompleteAudio.play();
 
-					setTimeout(() => {
+					this.scheduleForCurrentGame(() => {
 						const advanced = this.model.advanceRound(
 							this.getRandomCoordinates()
 						);
@@ -133,6 +134,18 @@ export class GameScreenController extends ScreenController {
 			this.model.startPlayerTurn(sequence);
 			this.view.updateStatus("Your turn! Repeat the sequence.");
 		});
+	}
+
+	/**
+	 * Back was clicked: stops the game (its lights, sounds and timers) without recording a
+	 * score, and goes back to the minigame's menu.
+	 */
+	quitGame(): void {
+		this.gameGeneration++;
+		this.gameOver = true;
+		this.clearPendingTimers();
+		this.view.getGrid().stopBlinking();
+		this.screenSwitcher.switchToScreen({ type: "menu" });
 	}
 
 	private scheduleForCurrentGame(callback: () => void, delay: number): void {

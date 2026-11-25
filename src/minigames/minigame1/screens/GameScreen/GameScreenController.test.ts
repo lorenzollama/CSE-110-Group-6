@@ -26,6 +26,8 @@ const viewHarness = vi.hoisted(() => {
     blink: vi.fn((_sequence: Coordinates[], _playAudio: boolean, callback: () => void) => {
       blinkCallbacks.push(callback);
     }),
+    stopBlinking: vi.fn(),
+    onBackClick: undefined as (() => void) | undefined,
   };
 });
 
@@ -51,7 +53,9 @@ function getAudio(filename: string) {
 
 vi.mock("./GameScreenView.ts", () => ({
   GameScreenView: class {
-    constructor(_stage: Stage) {}
+    constructor(_stage: Stage, onBackClick: () => void) {
+      viewHarness.onBackClick = onBackClick;
+    }
     setSelectionHandler(handler: (row: number, col: number) => void) {
       viewHarness.selectionHandler = handler;
     }
@@ -65,6 +69,7 @@ vi.mock("./GameScreenView.ts", () => ({
     getGrid() {
       return {
         blink: viewHarness.blink,
+        stopBlinking: viewHarness.stopBlinking,
         getRowCount: () => 3,
         getColCount: () => 3,
       };
@@ -275,5 +280,60 @@ describe("GameScreenController audio playback", () => {
     }
 
     expect(incorrectAudio.play).toHaveBeenCalledTimes(MAX_LIVES - 1);
+  });
+});
+describe("GameScreenController Back button", () => {
+  function clickBack() {
+    if (!viewHarness.onBackClick) throw new Error("Back handler was not registered");
+    viewHarness.onBackClick();
+  }
+
+  it("goes back to the minigame menu without recording a result", () => {
+    const { controller, screenSwitcher } = makeController();
+    controller.startGame();
+
+    clickBack();
+
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledTimes(1);
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledWith({ type: "menu" });
+    expect(viewHarness.stopBlinking).toHaveBeenCalledOnce();
+  });
+
+  it("ignores clicks on the lights after leaving", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    playPendingSequence();
+
+    clickBack();
+    select(0, 0); // would be wrong and cost a life
+
+    expect(getAudio("incorrect.mp3").play).not.toHaveBeenCalled();
+    expect(viewHarness.lives).toEqual([MAX_LIVES]); // only the start-of-game update
+  });
+
+  it("doesn't start the next round when leaving right after finishing one", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    playPendingSequence();
+    select(2, 2); // completes round 1; the next round is due in 2 seconds
+
+    clickBack();
+    vi.advanceTimersByTime(5000);
+
+    expect(getAudio("round_complete.mp3").play).not.toHaveBeenCalled();
+    expect(viewHarness.blink).toHaveBeenCalledTimes(1); // only round 1's sequence
+  });
+
+  it("can start a fresh game after leaving", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    clickBack();
+    viewHarness.blinkCallbacks.splice(0); // the real grid's stopBlinking() cancels the old playback
+
+    controller.startGame();
+    playPendingSequence();
+    select(2, 2);
+
+    expect(viewHarness.scores.at(-1)).toBe(1);
   });
 });

@@ -8,6 +8,7 @@ import {
 	makeTitle,
 	useTitleFont,
 } from "../../../../screens/shared/space.ts";
+import { makeBackButton, type Pressable } from "../../../../screens/shared/pressable.ts";
 
 const ROWS = 3;
 const COLS = 3;
@@ -24,9 +25,10 @@ export class GameScreenView implements View {
 	private roundText: Konva.Text;
 	private stage: Konva.Stage;
 	private sky: SpaceBackdrop;
+	private backButton: Pressable;
 	private selectionHandler?: (row: number, col: number) => void;
 
-	constructor(stage: Konva.Stage) {
+	constructor(stage: Konva.Stage, onBackClick: () => void) {
 		this.stage = stage;
 		this.group = new Konva.Group({ visible: false });
 		this.content = new Konva.Group();
@@ -132,8 +134,14 @@ export class GameScreenView implements View {
 		this.grid = new Grid(this.content, cfg);
 		this.group.add(this.content);
 
+		//Back in the upper-left corner, like the minigame's menu screen
+		const back = makeBackButton(onBackClick);
+		this.backButton = back.button;
+		this.backButton.group.position({ x: 20, y: 20 });
+		this.group.add(this.backButton.group);
+
 		useTitleFont(
-			[title],
+			[title, back.label],
 			() => this.group.getLayer()?.batchDraw()
 		);
 		this.centerLayout();
@@ -188,6 +196,8 @@ export class GameScreenView implements View {
 
 	hide(): void {
 		this.sky.stop();
+		this.backButton.reset();
+		document.body.style.cursor = "default";
 		this.group.visible(false);
 		this.group.getLayer()?.batchDraw();
 	}
