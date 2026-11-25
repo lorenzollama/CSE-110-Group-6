@@ -2,11 +2,28 @@ import Konva from 'konva';
 import type { View } from '../types';
 import { FRONT_LINE_Y, LANE_COUNT, type Scrap } from './ScrapShooterModel';
 import { makeButton } from '../popups/PopupView';
+import { prefersReducedMotion } from '../screens/shared/space';
+import { spriteImage } from './art/draw';
+import {
+  FLAME_ROWS,
+  SCRAP_COLORS,
+  SCRAP_PIXEL,
+  SHIP_COLORS,
+  SHIP_PIXEL,
+  SHIP_ROWS,
+  scrapSprite,
+} from './art/sprites';
 
 const WIDTH = 800;
 const HEIGHT = 600;
-const SHIP = { x: WIDTH / 2, y: 440 };
 const SCRAP_RADIUS = 40;
+// The ship's top edge. Its nose, where the laser starts, is at the middle of that edge.
+const SHIP_TOP = 412;
+const NOSE = { x: WIDTH / 2, y: SHIP_TOP };
+const SHIP_WIDTH = SHIP_ROWS[0].length * SHIP_PIXEL;
+const SHIP_HEIGHT = SHIP_ROWS.length * SHIP_PIXEL;
+// The glowing ring around the target scrap, just outside the scrap's picture.
+const RING_RADIUS = SCRAP_RADIUS + 6;
 
 // The x of each lane, spread evenly across the screen, indexed by Scrap.lane.
 const LANE_X = Array.from({ length: LANE_COUNT }, (_, lane) => (WIDTH / LANE_COUNT) * (lane + 0.5));
@@ -22,12 +39,13 @@ function scrapX(scrap: Scrap): number {
 }
 
 /**
- * Black and white, plain shapes only. The target scrap has a thick outline.
+ * Pixel-art ship and scraps (see art/sprites.ts). The target scrap has a glowing ring, and
+ * shooting draws a quick line from the ship to the scrap.
  * Draws what the controller tells it to; holds no game state.
  */
 export class ScrapShooterView implements View {
   private group = new Konva.Group();
-  private scrapGroups = new Map<number, { group: Konva.Group; body: Konva.Circle }>();
+  private scrapGroups = new Map<number, { group: Konva.Group; ring: Konva.Circle }>();
   private shotTimer: number | undefined;
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
@@ -35,6 +53,8 @@ export class ScrapShooterView implements View {
   private waveText!: Konva.Text;
   private healthBar!: Konva.Group;
   private scrapLayer!: Konva.Group; // the scraps, kept under the pause overlay
+  private ship!: Konva.Group;
+  private flame!: Konva.Image;
   private pauseOverlay!: Konva.Group;
   private pauseLabel!: Konva.Text;
 
@@ -138,14 +158,13 @@ export class ScrapShooterView implements View {
 
   // ------------------------------------------------------------- drawing
 
+  /** The ship, with a flame under it that flickers while the game runs (see render). */
   private drawShip(): void {
-    this.group.add(
-      new Konva.Line({
-        points: [SHIP.x, SHIP.y - 30, SHIP.x - 24, SHIP.y + 18, SHIP.x + 24, SHIP.y + 18],
-        closed: true,
-        fill: 'white',
-      }),
-    );
+    this.ship = new Konva.Group({ x: WIDTH / 2 - SHIP_WIDTH / 2, y: SHIP_TOP });
+    this.flame = spriteImage(FLAME_ROWS, SHIP_COLORS, SHIP_PIXEL);
+    this.flame.y(SHIP_HEIGHT);
+    this.ship.add(this.flame, spriteImage(SHIP_ROWS, SHIP_COLORS, SHIP_PIXEL));
+    this.group.add(this.ship);
   }
 
   /** A dashed line across the screen. A scrap that touches it is lost and costs health. */
@@ -194,23 +213,38 @@ export class ScrapShooterView implements View {
     return overlay;
   }
 
-  private addScrap(scrap: Scrap): { group: Konva.Group; body: Konva.Circle } {
+  private addScrap(scrap: Scrap): { group: Konva.Group; ring: Konva.Circle } {
     const group = new Konva.Group({ x: scrapX(scrap), y: scrap.y });
-    const body = new Konva.Circle({ radius: SCRAP_RADIUS, fill: 'black', stroke: 'white', strokeWidth: 2 });
-    const label = new Konva.Text({ text: scrap.question.prompt, fontSize: 20, fill: 'white' });
+
+    const picture = spriteImage(scrapSprite(scrap.id), SCRAP_COLORS, SCRAP_PIXEL);
+    picture.position({ x: -picture.width() / 2, y: -picture.height() / 2 });
+
+    const ring = new Konva.Circle({
+      radius: RING_RADIUS,
+      stroke: '#38bdf8',
+      strokeWidth: 3,
+      shadowColor: '#38bdf8',
+      shadowBlur: 12,
+      shadowOpacity: 1,
+      visible: false,
+      listening: false,
+    });
+
+    const label = new Konva.Text({ text: scrap.question.prompt, fontSize: 20, fill: 'white', listening: false });
     label.offsetX(label.width() / 2);
     label.offsetY(label.height() / 2);
 
-    group.add(body, label);
+    group.add(picture, ring, label);
     this.scrapLayer.add(group);
-    const shape = { group, body };
+    const shape = { group, ring };
     this.scrapGroups.set(scrap.id, shape);
     return shape;
   }
 
   /**
    * Makes the screen match the model: adds new scraps, moves the falling ones, removes the
-   * ones that are gone. The target gets a thick outline so the player knows which to answer.
+   * ones that are gone. The target gets a glowing ring so the player knows which to answer.
+   * It runs every frame, so it also makes the ring pulse and the ship's flame flicker.
    */
   render(scraps: Scrap[], target: Scrap | null): void {
     const live = new Set(scraps.map(scrap => scrap.id));
@@ -221,11 +255,14 @@ export class ScrapShooterView implements View {
       }
     }
 
+    const wobble = prefersReducedMotion() ? 0 : Math.sin(Date.now() / 150);
     for (const scrap of scraps) {
       const shape = this.scrapGroups.get(scrap.id) ?? this.addScrap(scrap);
       shape.group.y(scrap.y);
-      shape.body.strokeWidth(scrap === target ? 8 : 2);
+      shape.ring.visible(scrap === target);
+      shape.ring.radius(RING_RADIUS + wobble * 2);
     }
+    this.flame.scaleY(1 + wobble * 0.3);
     this.group.getLayer()?.batchDraw();
   }
 
@@ -262,7 +299,7 @@ export class ScrapShooterView implements View {
   /** Draws a quick line from the ship to the scrap that was hit. */
   shoot(scrap: Scrap): void {
     const shot = new Konva.Line({
-      points: [SHIP.x, SHIP.y - 30, scrapX(scrap), scrap.y],
+      points: [NOSE.x, NOSE.y, scrapX(scrap), scrap.y],
       stroke: 'white',
       strokeWidth: 3,
     });
