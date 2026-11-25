@@ -2,7 +2,7 @@ import Konva from 'konva';
 import type { View } from '../types';
 import { FRONT_LINE_Y, LANE_COUNT, type Scrap } from './ScrapShooterModel';
 import { makeButton } from '../popups/PopupView';
-import { prefersReducedMotion } from '../screens/shared/space';
+import { SpaceBackdrop, prefersReducedMotion } from '../screens/shared/space';
 import { ScrapEffects, spriteImage } from './art/draw';
 import {
   FLAME_ROWS,
@@ -14,6 +14,7 @@ import {
   scrapSprite,
 } from './art/sprites';
 
+// The game is laid out on an 800×600 field, then scaled up to fill the window (see fit).
 const WIDTH = 800;
 const HEIGHT = 600;
 const SCRAP_RADIUS = 40;
@@ -39,12 +40,16 @@ function scrapX(scrap: Scrap): number {
 }
 
 /**
- * Pixel-art ship and scraps (see art/sprites.ts). The target scrap has a glowing ring, and
+ * Pixel-art ship and scraps (see art/sprites.ts) over the menus' starry sky, scaled to fill the window. The target scrap has a glowing ring, and
  * shooting plays a laser, an explosion and a kick on the ship (art/draw.ts).
  * Draws what the controller tells it to; holds no game state.
  */
 export class ScrapShooterView implements View {
   private group = new Konva.Group();
+  private backdrop: SpaceBackdrop | null = null; // the starry sky behind the game, filling the window
+  private field!: Konva.Group; // everything else, laid out at 800×600 and scaled to fit the window
+  private frontLine!: Konva.Line;
+  private pauseDim!: Konva.Rect;
   private scrapGroups = new Map<number, { group: Konva.Group; ring: Konva.Circle }>();
   private wrongTimer: number | undefined;
   private inputBox!: Konva.Rect;
@@ -97,16 +102,9 @@ export class ScrapShooterView implements View {
       fill: 'white',
     });
 
-    this.group.add(
-      new Konva.Rect({
-        x: 0,
-        y: 0,
-        width: WIDTH,
-        height: HEIGHT,
-        fill: 'black',
-        listening: false,
-      }),
-    );
+    this.backdrop = new SpaceBackdrop(undefined, (w, h, left, top) => this.fit(w, h, left, top));
+    this.field = new Konva.Group();
+    this.group.add(this.backdrop.group, this.field);
 
     this.waveText = new Konva.Text({
       x: WIDTH / 2 - 100,
@@ -127,14 +125,38 @@ export class ScrapShooterView implements View {
 
     this.drawFrontLine();
     this.drawShip();
-    this.group.add(this.scrapLayer, effectsLayer, this.inputBox, this.inputText, this.waveText, this.healthBar);
-    this.group.add(this.pauseOverlay); // above the game, below the buttons so they still work
-    this.group.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
+    this.field.add(this.scrapLayer, effectsLayer, this.inputBox, this.inputText, this.waveText, this.healthBar);
+    this.field.add(this.pauseOverlay); // above the game, below the buttons so they still work
+    this.field.add(makeButton(20, 536, 'Back', onBack, '#6b7280', 100));
 
     // Bottom-right, across from Back: up top it would sit under scraps falling in the right lane.
     const pauseButton = makeButton(WIDTH - 120, 536, 'Pause', onPause, '#6b7280', 100);
     this.pauseLabel = pauseButton.findOne<Konva.Text>('Text')!;
-    this.group.add(pauseButton);
+    this.field.add(pauseButton);
+
+    // Scaled-up pixel art should stay blocky, not blurry. (The layer is shared, so destroy() turns it back on.)
+    this.group.getLayer()?.imageSmoothingEnabled(false);
+    this.backdrop.start(); // also fits the field to the window, and refits when the window changes
+  }
+
+  /**
+   * Scales the 800×600 field as big as fits in the window and centers it there, then stretches
+   * the front line and the pause cover across the whole window. Called by the backdrop with the
+   * window's size and its top-left corner relative to the layer (see SpaceBackdrop's onFit).
+   */
+  private fit(windowWidth: number, windowHeight: number, left: number, top: number): void {
+    const scale = Math.min(windowWidth / WIDTH, windowHeight / HEIGHT);
+    this.field.offset({ x: WIDTH / 2, y: HEIGHT / 2 });
+    this.field.position({ x: left + windowWidth / 2, y: top + windowHeight / 2 });
+    this.field.scale({ x: scale, y: scale });
+
+    // The window's edges in the field's own 800×600 coordinates.
+    const fieldLeft = WIDTH / 2 - windowWidth / scale / 2;
+    const fieldTop = HEIGHT / 2 - windowHeight / scale / 2;
+    const y = this.frontLine.points()[1];
+    this.frontLine.points([fieldLeft, y, fieldLeft + windowWidth / scale, y]);
+    this.pauseDim.position({ x: fieldLeft, y: fieldTop });
+    this.pauseDim.size({ width: windowWidth / scale, height: windowHeight / scale });
   }
 
   /** Shows or hides the PAUSED overlay, and switches the Pause button's label to match. */
@@ -146,6 +168,9 @@ export class ScrapShooterView implements View {
 
   destroy(): void {
     this.effects?.destroy();
+    this.backdrop?.stop();
+    this.backdrop = null;
+    this.group.getLayer()?.imageSmoothingEnabled(true);
 
     if (this.wrongTimer !== undefined) {
       window.clearTimeout(this.wrongTimer);
@@ -164,21 +189,20 @@ export class ScrapShooterView implements View {
     this.flame = spriteImage(FLAME_ROWS, SHIP_COLORS, SHIP_PIXEL);
     this.flame.y(SHIP_HEIGHT);
     this.ship.add(this.flame, spriteImage(SHIP_ROWS, SHIP_COLORS, SHIP_PIXEL));
-    this.group.add(this.ship);
+    this.field.add(this.ship);
   }
 
-  /** A dashed line across the screen. A scrap that touches it is lost and costs health. */
+  /** A dashed line across the window (see fit). A scrap that touches it is lost and costs health. */
   private drawFrontLine(): void {
     const y = FRONT_LINE_Y + SCRAP_RADIUS;
-    this.group.add(
-      new Konva.Line({
-        points: [0, y, WIDTH, y],
-        stroke: 'white',
-        strokeWidth: 2,
-        dash: [12, 8],
-        listening: false,
-      }),
-    );
+    this.frontLine = new Konva.Line({
+      points: [0, y, WIDTH, y],
+      stroke: 'white',
+      strokeWidth: 2,
+      dash: [12, 8],
+      listening: false,
+    });
+    this.field.add(this.frontLine);
   }
 
   /**
@@ -187,8 +211,10 @@ export class ScrapShooterView implements View {
    */
   private makePauseOverlay(onResume: () => void): Konva.Group {
     const overlay = new Konva.Group({ visible: false });
+    // Sized to cover the whole window in fit().
+    this.pauseDim = new Konva.Rect({ width: WIDTH, height: HEIGHT, fill: 'black', opacity: 0.75 });
     overlay.add(
-      new Konva.Rect({ width: WIDTH, height: HEIGHT, fill: 'black', opacity: 0.75 }),
+      this.pauseDim,
       new Konva.Text({
         y: 200,
         width: WIDTH,
