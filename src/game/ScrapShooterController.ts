@@ -8,16 +8,19 @@ import { TOTAL_WAVES } from './logic/waves';
 import {TOTAL_LEVELS, type LevelsByTopic} from "../screens/levels/LevelsModel";
 import { submitLevelScore, submitUnlockedLevel } from "../api/progress";
 import type { HighScoresModel } from "../screens/levels/HighScoresModel";
+import { sounds } from '../audio/sounds';
 
 // A long gap between frames (like a hidden tab) must not make the scraps jump.
 const MAX_FRAME_SECONDS = 0.1;
 
 /**
  * Scraps fall down the screen in waves. The lowest one is the target. Type its answer and
- * press Enter. Right: the ship shoots it. Wrong: the input box border thickens briefly and a
- * popup explains the answer (no health is lost). A scrap that reaches the front line costs
- * 1 health. The game loop moves the model forward each frame and stops while a popup is
- * open or the game is paused (the Pause button, or Esc / P).
+ * press Enter. Right: the ship shoots it, with a laser sound. Wrong: a "wrong" sound, the
+ * scrap breaks apart, 1 health is lost and a popup explains the answer; then the next lowest
+ * scrap is the target. A scrap that reaches the front line also costs 1 health, with the
+ * same "wrong" sound.
+ * The game loop moves the model forward each frame and stops while a popup is open or the
+ * game is paused (the Pause button, or Esc / P).
  */
 export class ScrapShooterController extends ScreenController {
   private view = new ScrapShooterView();
@@ -97,7 +100,11 @@ export class ScrapShooterController extends ScreenController {
   private step(model: ScrapShooterModel, seconds: number): void {
     const result = model.tick(seconds);
     if (result.newWave !== null) this.view.showWave(result.newWave, TOTAL_WAVES);
-    if (result.missed.length > 0) this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    if (result.missed.length > 0) {
+      // A scrap got through: the same "wrong" sound as a wrong answer (once, even if two hit together).
+      sounds.playEffect('wrong');
+      this.view.showHealth(model.getHealth(), MAX_HEALTH);
+    }
     this.view.render(model.getScraps(), model.getTarget());
 
     if (model.isLost()) this.gameOver(model);
@@ -137,11 +144,17 @@ export class ScrapShooterController extends ScreenController {
     this.view.showTyped(model.getTyped());
 
     if (result.type === 'correct') {
+      sounds.playEffect('shoot');
       this.view.shoot(result.hit);
       this.view.render(model.getScraps(), model.getTarget());
       if (model.isOver()) this.endGame(model);
     } else {
+      // The model already removed the scrap and took 1 health; show both.
+      sounds.playEffect('wrong');
       this.view.flashWrong();
+      this.view.breakApart(result.target);
+      this.view.showHealth(model.getHealth(), MAX_HEALTH);
+      this.view.render(model.getScraps(), model.getTarget());
       const { question } = result.target;
       this.popups.showWrongAnswer(
         {
@@ -150,7 +163,12 @@ export class ScrapShooterController extends ScreenController {
           correctAnswer: question.answer,
           explanation: question.explanation,
         },
-        () => {}, // a wrong answer costs no health, so the game just carries on after "Got it"
+        // After "Got it": game over if that was the last health, level complete if it was the
+        // level's last scrap, otherwise the game carries on with the next scrap.
+        () => {
+          if (model.isLost()) this.gameOver(model);
+          else if (model.isOver()) this.endGame(model);
+        },
       );
     }
   }

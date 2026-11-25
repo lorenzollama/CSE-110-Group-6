@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CLICK_VOLUME, MUSIC_VOLUME, SoundPlayer, type AudioTrack } from "./SoundPlayer";
+import { CLICK_VOLUME, EFFECT_VOLUMES, MUSIC_VOLUME, SoundPlayer, type AudioTrack, type SoundName } from "./SoundPlayer";
 
 /** A fake <audio> element that records what was done to it. */
 function fakeTrack(playResult: Promise<void> = Promise.resolve()) {
@@ -7,7 +7,7 @@ function fakeTrack(playResult: Promise<void> = Promise.resolve()) {
 }
 
 /** A SoundPlayer with fake audio. `made` lists every fake track it made, with its file. */
-function setup(urls: Partial<Record<"click" | "music", string>> = { click: "/click.mp3", music: "/music.mp3" }) {
+function setup(urls: Partial<Record<SoundName, string>> = { click: "/click.mp3", music: "/music.mp3" }) {
   const made: { url: string; track: ReturnType<typeof fakeTrack> }[] = [];
   const player = new SoundPlayer(urls, (url) => {
     const track = fakeTrack();
@@ -53,6 +53,49 @@ describe("SoundPlayer: click", () => {
   it("does nothing when there's no click file", () => {
     const { player, made } = setup({ music: "/music.mp3" });
     expect(() => player.playClick()).not.toThrow();
+    expect(made).toHaveLength(0);
+  });
+});
+
+describe("SoundPlayer: game sounds", () => {
+  const allSounds = { click: "/click.wav", shoot: "/shoot.wav", wrong: "/wrong.wav", music: "/music.mp3" };
+
+  // Success path: each game sound plays its own file at its own volume.
+  it.each(["shoot", "wrong"] as const)("plays the %s sound", (name) => {
+    const { player, made } = setup(allSounds);
+    player.playEffect(name);
+    expect(made).toHaveLength(1);
+    expect(made[0].url).toBe(allSounds[name]);
+    expect(made[0].track.play).toHaveBeenCalledOnce();
+    expect(made[0].track.volume).toBe(EFFECT_VOLUMES[name]);
+  });
+
+  it("plays the game sounds louder than the music, so they can be heard over it", () => {
+    expect(EFFECT_VOLUMES.shoot).toBeGreaterThan(MUSIC_VOLUME);
+    expect(EFFECT_VOLUMES.wrong).toBeGreaterThan(MUSIC_VOLUME);
+  });
+
+  // The mute button silences these too.
+  it("stays silent while muted", () => {
+    const { player, made } = setup(allSounds);
+    player.toggleMuted();
+    player.playEffect("shoot");
+    player.playEffect("wrong");
+    expect(made).toHaveLength(0);
+  });
+
+  // Edge case: quick shots in a row each get their own copy, so they can overlap.
+  it("plays a fresh copy each time", () => {
+    const { player, made } = setup(allSounds);
+    player.playEffect("shoot");
+    player.playEffect("shoot");
+    expect(made).toHaveLength(2);
+  });
+
+  // Edge case: a sound whose file is missing is skipped.
+  it("does nothing when the sound's file is missing", () => {
+    const { player, made } = setup({ click: "/click.wav" });
+    expect(() => player.playEffect("wrong")).not.toThrow();
     expect(made).toHaveLength(0);
   });
 });

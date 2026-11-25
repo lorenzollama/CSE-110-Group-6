@@ -12,11 +12,19 @@ export interface AudioTrack {
   volume: number;
 }
 
-export type SoundName = "click" | "music";
+export type SoundName = "click" | "shoot" | "wrong" | "music";
 
-// Louder clicks than music, so the music stays in the background.
+/** The short sounds that play once (everything except the music). */
+export type EffectName = Exclude<SoundName, "music">;
+
+// The effects are louder than the music, so the music stays in the background.
 export const CLICK_VOLUME = 0.8;
 export const MUSIC_VOLUME = 0.35;
+export const EFFECT_VOLUMES: Record<EffectName, number> = {
+  click: CLICK_VOLUME,
+  shoot: 0.55, // plays a lot, so a bit softer
+  wrong: 0.7,
+};
 
 export class SoundPlayer {
   private muted = false;
@@ -50,11 +58,19 @@ export class SoundPlayer {
 
   /** Plays the button click sound once, unless muted. */
   playClick(): void {
+    this.playEffect("click");
+  }
+
+  /**
+   * Plays a short sound once, unless muted: "click" for buttons, "shoot" when a scrap is shot,
+   * "wrong" for a wrong answer. Each play is its own copy, so quick repeats can overlap.
+   */
+  playEffect(name: EffectName): void {
     if (this.muted) return;
-    const click = this.load("click");
-    if (!click) return;
-    click.volume = CLICK_VOLUME;
-    this.play(click);
+    const effect = this.load(name);
+    if (!effect) return;
+    effect.volume = EFFECT_VOLUMES[name];
+    this.play(effect);
   }
 
   /**

@@ -22,5 +22,7 @@ const fileUrl = (name: string): string | undefined =>
  */
 export const sounds = new SoundPlayer({
   click: fileUrl("menu-click"),
+  shoot: fileUrl("shoot"),
+  wrong: fileUrl("wrong"),
   music: fileUrl("heroic-music"),
 });

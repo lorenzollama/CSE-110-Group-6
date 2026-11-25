@@ -454,6 +454,11 @@ export class ScrapShooterView implements View {
     this.effects.recoil(this.ship, SHIP_TOP);
   }
 
+  /** A wrong answer: the scrap breaks apart where it is, with no laser from the ship. */
+  breakApart(scrap: Scrap): void {
+    this.effects.explode({ x: scrapX(scrap), y: scrap.y });
+  }
+
   /** The answer box glows red and gives a little shake (no shake if the player wants less motion). */
   flashWrong(): void {
     if (this.wrongTimer !== undefined) window.clearTimeout(this.wrongTimer);
