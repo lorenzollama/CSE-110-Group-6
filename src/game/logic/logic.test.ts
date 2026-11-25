@@ -6,6 +6,7 @@ import {
   makeQuestion,
   makeQuestionForTopic,
   makeSimplificationQuestion,
+  simplifyRangeForLevel,
 } from './questions';
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
@@ -148,8 +149,57 @@ describe('factorRangeForLevel', () => {
       const divisor = Number(division.prompt.split(' ÷ ')[1]);
       expect(divisor).toBeLessThanOrEqual(5);
       expect(Number(division.answer)).toBeLessThanOrEqual(5);
-      const denominator = Number(makeSimplificationQuestion(Math.random, range).answer.split('/')[1]);
-      expect(denominator).toBeLessThanOrEqual(5);
     }
+  });
+});
+
+describe('simplifyRangeForLevel', () => {
+  // The common factor is the prompt's top divided by the answer's top.
+  const parts = (level: number) => {
+    const q = makeQuestionForTopic('simplification', Math.random, level);
+    const [top, bottom] = q.prompt.split('/').map(Number);
+    const [numerator, denominator] = q.answer.split('/').map(Number);
+    return { top, bottom, denominator, common: top / numerator };
+  };
+
+  it('only asks to halve small fractions on level 1', () => {
+    for (let i = 0; i < 200; i++) {
+      const { bottom, denominator, common } = parts(1);
+      expect(common).toBe(2);
+      expect(denominator).toBeLessThanOrEqual(4);
+      expect(bottom).toBeLessThanOrEqual(8); // at most 6/8
+    }
+  });
+
+  it('keeps every level\'s questions in its range', () => {
+    for (let level = 1; level <= 10; level++) {
+      const { maxDenominator, maxCommon } = simplifyRangeForLevel(level);
+      for (let i = 0; i < 50; i++) {
+        const { denominator, common } = parts(level);
+        expect(denominator).toBeLessThanOrEqual(maxDenominator);
+        expect(common).toBeLessThanOrEqual(maxCommon);
+      }
+    }
+  });
+
+  it('gets harder level by level, one step at a time', () => {
+    for (let level = 2; level <= 10; level++) {
+      const now = simplifyRangeForLevel(level);
+      const before = simplifyRangeForLevel(level - 1);
+      expect(now.maxDenominator).toBeGreaterThanOrEqual(before.maxDenominator);
+      expect(now.maxCommon).toBeGreaterThanOrEqual(before.maxCommon);
+      const grew = now.maxDenominator - before.maxDenominator + now.maxCommon - before.maxCommon;
+      expect(grew).toBe(1);
+    }
+  });
+
+  it('keeps easy halving questions possible at every level', () => {
+    const halved = (level: number) => makeQuestionForTopic('simplification', () => 0, level);
+    for (let level = 1; level <= 10; level++) expect(halved(level).prompt).toBe('2/4');
+  });
+
+  it('never makes a prompt bigger than 48/54, even past the last level', () => {
+    for (let i = 0; i < 300; i++) expect(parts(12).bottom).toBeLessThanOrEqual(54);
+    expect(simplifyRangeForLevel(12)).toEqual(simplifyRangeForLevel(10));
   });
 });

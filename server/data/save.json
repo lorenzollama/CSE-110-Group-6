@@ -3,12 +3,25 @@
   "highScore": 9,
   "minigame1PersonalBest": 3,
   "unlockedLevels": {
-    "multiplication": 3
+    "multiplication": 8,
+    "division": 2,
+    "simplification": 2
   },
   "bestScores": {
     "multiplication": {
       "1": 9,
-      "2": 8
+      "2": 8,
+      "3": 18,
+      "4": 21,
+      "5": 23,
+      "6": 26,
+      "7": 30
+    },
+    "division": {
+      "1": 12
+    },
+    "simplification": {
+      "1": 12
     }
   }
 }

@@ -38,6 +38,43 @@ export function factorRangeForLevel(level: number): FactorRange {
   };
 }
 
+/**
+ * How hard a level's simplify questions are. The answer's denominator goes up to
+ * `maxDenominator` and the factor the player divides out goes up to `maxCommon`; both start
+ * at 2. Simplifying gets hard fast because the two multiply (4/5 with a common factor of 5 is
+ * already 20/25), so this grows more slowly than the times-table range.
+ */
+export interface SimplifyRange {
+  maxDenominator: number;
+  maxCommon: number;
+}
+
+/** Every simplify question possible: up to ninths, with a common factor up to 9 (e.g. 72/81). */
+export const FULL_SIMPLIFY_RANGE: SimplifyRange = { maxDenominator: 9, maxCommon: 9 };
+
+// One row per level, level 1 first. Levels 1-2 only halve (2/4, 6/8, 8/10), then dividing by
+// 3, 4 and so on comes in one step at a time. The smallest common factor stays 2 at every
+// level, so the easy halving questions keep turning up between the harder ones. The biggest
+// prompt is 6/8 at level 1, 12/15 at level 3, 30/35 at level 7 and 48/54 at level 10.
+const SIMPLIFY_LEVELS: SimplifyRange[] = [
+  { maxDenominator: 4, maxCommon: 2 },
+  { maxDenominator: 5, maxCommon: 2 },
+  { maxDenominator: 5, maxCommon: 3 },
+  { maxDenominator: 6, maxCommon: 3 },
+  { maxDenominator: 6, maxCommon: 4 },
+  { maxDenominator: 7, maxCommon: 4 },
+  { maxDenominator: 7, maxCommon: 5 },
+  { maxDenominator: 8, maxCommon: 5 },
+  { maxDenominator: 9, maxCommon: 5 },
+  { maxDenominator: 9, maxCommon: 6 },
+];
+
+/** The simplify questions a level uses (see SIMPLIFY_LEVELS). Levels past the table use its last row. */
+export function simplifyRangeForLevel(level: number): SimplifyRange {
+  const row = Math.min(Math.max(level, 1), SIMPLIFY_LEVELS.length) - 1;
+  return SIMPLIFY_LEVELS[row];
+}
+
 function randomFactor(range: FactorRange, rng: () => number): number {
   return randomInt(range.min, range.max, rng);
 }
@@ -82,17 +119,19 @@ export function makeDivisionQuestion(rng: () => number = Math.random, range: Fac
  * simplified fraction, e.g. prompt "12/18", answer "2/3".
  * It picks a fraction already in lowest terms (2/3), then multiplies the top
  * and bottom by the same number (6) to get the fraction to simplify (12/18).
- * The range sets the common factor and the biggest denominator; the denominator
- * can always be as small as 2, so halves stay possible at every level.
+ * The range sets the biggest denominator and common factor (see simplifyRangeForLevel);
+ * both can always be as small as 2, so halves stay possible at every level.
  */
-export function makeSimplificationQuestion(rng: () => number = Math.random, range: FactorRange = FULL_RANGE): Question {
-  const denominator = randomInt(2, range.max, rng);
+export function makeSimplificationQuestion(
+  rng: () => number = Math.random, range: SimplifyRange = FULL_SIMPLIFY_RANGE,
+): Question {
+  const denominator = randomInt(2, range.maxDenominator, rng);
   const numerators: number[] = [];
   for (let n = 1; n < denominator; n++) {
     if (gcd(n, denominator) === 1) numerators.push(n);
   }
   const numerator = numerators[Math.floor(rng() * numerators.length)];
-  const common = randomFactor(range, rng); // the greatest common factor of the big fraction
+  const common = randomInt(2, range.maxCommon, rng); // the greatest common factor of the big fraction
   const top = numerator * common;
   const bottom = denominator * common;
   return {
@@ -106,19 +145,19 @@ export function makeSimplificationQuestion(rng: () => number = Math.random, rang
 }
 
 /**
- * Makes a random question for the topic picked on the topic select screen, using the
- * factors in `range` (see factorRangeForLevel).
+ * Makes a random question for the topic picked on the topic select screen, as hard as
+ * `level` calls for (see factorRangeForLevel and simplifyRangeForLevel). With no level,
+ * any question the topic can make.
  */
-export function makeQuestionForTopic(
-  topic: Topic, rng: () => number = Math.random, range: FactorRange = FULL_RANGE,
-): Question {
+export function makeQuestionForTopic(topic: Topic, rng: () => number = Math.random, level?: number): Question {
+  const factors = level === undefined ? FULL_RANGE : factorRangeForLevel(level);
   switch (topic) {
     case "multiplication":
-      return makeQuestion(rng, range);
+      return makeQuestion(rng, factors);
     case "division":
-      return makeDivisionQuestion(rng, range);
+      return makeDivisionQuestion(rng, factors);
     case "simplification":
-      return makeSimplificationQuestion(rng, range);
+      return makeSimplificationQuestion(rng, level === undefined ? FULL_SIMPLIFY_RANGE : simplifyRangeForLevel(level));
   }
 }
 
