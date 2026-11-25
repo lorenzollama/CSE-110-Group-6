@@ -7,7 +7,7 @@ export const MAX_HEALTH = 3;
 /** Screen y where a new scrap appears. */
 export const SPAWN_Y = 90;
 /** Screen y of a scrap's center when it hits the front line. It is then gone and costs 1 health. */
-export const FRONT_LINE_Y = 360;
+export const FRONT_LINE_Y = 400;
 // A lane can take a new scrap only after its last one has fallen this far.
 const SPAWN_CLEARANCE = 100;
 // Pause between one wave ending and the next one starting.
