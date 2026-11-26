@@ -52,8 +52,9 @@ describe('ScrapShooterModel scoring', () => {
   it('counts only correct answers in the score', () => {
     const model = newModel();
     answerRight(model);
-    run(model, 5);
+    run(model, 5); // the second scrap appears
     answerWrong(model);
+    run(model, 5); // the third scrap appears
     answerRight(model);
     expect(model.getScore()).toBe(2);
   });
@@ -82,29 +83,27 @@ describe('ScrapShooterModel scoring', () => {
     expect(model.getAccuracy()).toBe(50); // 1 right, 1 missed
   });
 
-  it('counts a wrong answer then the right one as one wrong scrap', () => {
+  // Every scrap gets one chance: a wrong answer destroys it, so it can't be answered again.
+  it('counts each scrap once, with no second try after a wrong answer', () => {
     const model = newModel();
     answerWrong(model);
-    answerWrong(model);
-    answerRight(model); // the same scrap, finally shot
-    expect(model.getScore()).toBe(1); // the score still counts the shot
-    expect(model.getAccuracy()).toBe(0); // 0 of 1 right on the first try
-    run(model, 5);
+    expect(model.getScraps()).toHaveLength(0); // the only scrap is gone
+    expect(model.getAccuracy()).toBe(0); // 0 of 1
+    run(model, 5); // the next scrap appears
     answerRight(model);
     expect(model.getAccuracy()).toBe(50); // 1 of 2
   });
 
-  it('counts a scrap answered wrong and then missed only once', () => {
+  // Edge case: a scrap destroyed by a wrong answer can't also cost health at the front line.
+  it('does not count a scrap answered wrong as missed too', () => {
     const model = newModel();
-    answerRight(model); // 1 of 1
-    run(model, 5); // the next scrap appears
-    expect(answerWrong(model).type).toBe('incorrect'); // the next scrap: 1 of 2
-    expect(model.getAccuracy()).toBe(50);
+    answerWrong(model);
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
     const secondsToFall = (FRONT_LINE_Y - SPAWN_Y) / waveSettings(1, 1).speed;
     let missed = 0;
-    for (let t = 0; t < secondsToFall * 3 && missed === 0; t += STEP) missed += model.tick(STEP).missed.length;
-    expect(missed).toBe(1);
-    expect(model.getAccuracy()).toBe(50); // still 1 of 2, not 1 of 3
+    for (let t = 0; t < secondsToFall + 1; t += STEP) missed += model.tick(STEP).missed.length;
+    expect(missed).toBe(0); // it would have reached the line by now
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1); // only the wrong answer cost health
   });
 
   it('has 0 accuracy when every scrap is missed', () => {
@@ -227,10 +226,15 @@ describe('ScrapShooterModel falling scraps', () => {
     expect(model.getScraps()).not.toContain(first);
   });
 
-  it('keeps the scrap on a wrong answer', () => {
+  it('removes the target on a wrong answer, and the next lowest scrap becomes the target', () => {
     const model = newModel();
-    answerWrong(model);
-    expect(model.getScraps()).toHaveLength(1);
+    const first = target(model);
+    run(model, 6); // a second scrap has appeared above the first
+    const second = model.getScraps().find(scrap => scrap !== first)!;
+    const result = answerWrong(model);
+    expect(result.type).toBe('incorrect');
+    expect(model.getScraps()).not.toContain(first);
+    expect(target(model)).toBe(second);
   });
 
   it('adds new scraps over time', () => {
@@ -284,10 +288,22 @@ describe('ScrapShooterModel health', () => {
     expect(model.getHealth()).toBe(0);
   });
 
-  it('keeps its health on a wrong answer', () => {
+  it('loses one health on a wrong answer', () => {
     const model = newModel();
     answerWrong(model);
-    expect(model.getHealth()).toBe(MAX_HEALTH);
+    expect(model.getHealth()).toBe(MAX_HEALTH - 1);
+  });
+
+  it(`is lost after ${MAX_HEALTH} wrong answers`, () => {
+    const model = newModel();
+    for (let i = 0; i < MAX_HEALTH; i++) {
+      expect(model.isLost()).toBe(false);
+      answerWrong(model);
+      run(model, 3.1); // the next scrap appears
+    }
+    expect(model.getHealth()).toBe(0);
+    expect(model.isLost()).toBe(true);
+    expect(model.getScore()).toBe(0);
   });
 
   it('keeps its health on a right answer', () => {

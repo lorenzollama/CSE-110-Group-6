@@ -6,7 +6,7 @@ export const LANE_COUNT = 5;
 export const MAX_HEALTH = 3;
 /** Screen y where a new scrap appears. */
 export const SPAWN_Y = 90;
-/** Screen y of a scrap's center when it hits the front line. It is then gone and costs 1 health. */
+/** Screen y of a scrap's center when it hits the front line. It's then gone and costs 1 health. */
 export const FRONT_LINE_Y = 400;
 // A lane can take a new scrap only after its last one has fallen this far.
 const SPAWN_CLEARANCE = 100;
@@ -38,7 +38,8 @@ export interface TickResult {
 /**
  * Game state only. Scraps fall down the lanes in waves and the player shoots them by typing
  * the answer. The target is always the lowest scrap, the one closest to the front line.
- * Health only drops when a scrap reaches the front line, never for a wrong answer.
+ * Every scrap gets one chance: a right answer shoots it, a wrong answer destroys it and costs
+ * 1 health, and so does letting it reach the front line. Then the next lowest scrap is the target.
  *
  * Time moves only when tick() is called, so tests can run a whole level in a few lines.
  */
@@ -46,10 +47,7 @@ export class ScrapShooterModel {
   private scraps: Scrap[] = [];
   private typed = '';
   private correct = 0;
-  // Accuracy counts each scrap once, by its first answer (see getAccuracy).
-  private judged = 0; // scraps that got a first answer or were missed without one
-  private rightFirstTry = 0; // scraps whose first answer was right
-  private tried = new Set<number>(); // ids of scraps on screen that already had a wrong answer
+  private judged = 0; // scraps that were answered (right or wrong) or reached the front line
   private health = MAX_HEALTH;
   private wave = 1;
   private settings: WaveSettings;
@@ -90,7 +88,7 @@ export class ScrapShooterModel {
     return this.correct;
   }
 
-  /** How many scraps can still reach the front line before the game is lost. */
+  /** How many more wrong answers or missed scraps the player can take before the game is lost. */
   getHealth(): number {
     return this.health;
   }
@@ -105,12 +103,11 @@ export class ScrapShooterModel {
   }
 
   /**
-   * Percent of scraps answered right on the first try, 0-100. Each scrap counts once:
-   * wrong then right is 0 of 1, and a scrap that reaches the front line without an answer
-   * counts as wrong too. (The score still counts every scrap shot, retries included.)
+   * Percent of scraps answered right, 0-100. Each scrap counts once: it's either answered
+   * (right or wrong) or reaches the front line, which counts as wrong.
    */
   getAccuracy(): number {
-    return this.judged === 0 ? 0 : Math.round((this.rightFirstTry / this.judged) * 100);
+    return this.judged === 0 ? 0 : Math.round((this.correct / this.judged) * 100);
   }
 
   /** True when the last wave is cleared. */
@@ -132,7 +129,11 @@ export class ScrapShooterModel {
     this.typed = this.typed.slice(0, -1);
   }
 
-  /** Checks the typed answer against the target. A right answer removes that scrap. */
+  /**
+   * Checks the typed answer against the target. Either way the target is removed: a right
+   * answer shoots it, and a wrong one destroys it and costs 1 health. The next lowest scrap
+   * becomes the target.
+   */
   submit(): SubmitResult {
     const target = this.getTarget();
     if (this.typed === '' || target === null || this.isOver() || this.isLost()) {
@@ -140,20 +141,14 @@ export class ScrapShooterModel {
     }
     const value = this.typed;
     this.typed = '';
-    const right = isCorrect(target.question, value);
-    const firstTry = !this.tried.has(target.id);
-    if (firstTry) {
-      this.judged++;
-      if (right) this.rightFirstTry++;
-    }
+    this.judged++;
+    this.scraps = this.scraps.filter(scrap => scrap !== target);
 
-    if (right) {
+    if (isCorrect(target.question, value)) {
       this.correct++;
-      this.tried.delete(target.id);
-      this.scraps = this.scraps.filter(scrap => scrap !== target);
       return { type: 'correct', hit: target };
     }
-    this.tried.add(target.id);
+    this.loseHealth();
     return { type: 'incorrect', target, answer: value };
   }
 
@@ -177,10 +172,9 @@ export class ScrapShooterModel {
 
     result.missed = this.scraps.filter(scrap => scrap.y >= FRONT_LINE_Y);
     this.scraps = this.scraps.filter(scrap => scrap.y < FRONT_LINE_Y);
-    for (const scrap of result.missed) {
+    for (let i = 0; i < result.missed.length; i++) {
       this.loseHealth();
-      // A miss counts as wrong, unless the scrap already counted as wrong for its first answer.
-      if (!this.tried.delete(scrap.id)) this.judged++;
+      this.judged++; // a scrap that gets through counts as a wrong answer
     }
   }
 
