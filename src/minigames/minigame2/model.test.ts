@@ -7,6 +7,7 @@ import {
   Game,
   makeNewBaseQuestion,
   makeQuestion,
+  MAX_QUESTION_NUMBER,
   QUESTIONS_BEFORE_NEW_BASE,
   reverseRows,
   slideLine,
@@ -398,7 +399,7 @@ describe("feedback", () => {
     const game = startedGame();
     game.setQuestion(makeNewBaseQuestion(2, fakeRandom(0.99, 0.99)));
     const longestSquareRoot = startedGame();
-    longestSquareRoot.setQuestion(makeQuestion(9, fakeRandom(0, 0.99))); // √531441
+    longestSquareRoot.setQuestion(makeQuestion(3, fakeRandom(0, 0.99))); // √729, the biggest square root under the limit
 
     expect(game.answer(0).feedback!.length).toBeLessThanOrEqual(MAX_FEEDBACK_LENGTH);
     expect(longestSquareRoot.answer(0).feedback!.length).toBeLessThanOrEqual(MAX_FEEDBACK_LENGTH);
@@ -539,6 +540,26 @@ describe("makeQuestion", () => {
     expect(makeQuestion(2, fakeRandom(0.5, 0)).text).toBe("2^2");
     expect(makeQuestion(2, fakeRandom(0.5, 0.99)).text).toBe("2^6");
     expect(makeQuestion(2, fakeRandom(0, 0)).text).toBe("√4");
+  });
+
+  it("gives big bases only small powers", () => {
+    expect(makeQuestion(9, fakeRandom(0.5, 0.99)).text).toBe("9^3"); // 9^4 = 6561 is too big
+    expect(makeQuestion(9, fakeRandom(0, 0.99)).text).toBe("√81"); // √6561 is too big
+    expect(makeQuestion(4, fakeRandom(0.5, 0.99)).text).toBe("4^4"); // 256, while 4^5 = 1024 is too big
+  });
+
+  it("never uses a number bigger than the limit, in any base", () => {
+    for (let base = 2; base <= 9; base++) {
+      for (const kind of [0, 0.99]) {
+        for (const power of [0, 0.5, 0.99]) {
+          const question = makeQuestion(base, fakeRandom(kind, power));
+          const newBaseQuestion = makeNewBaseQuestion(base, fakeRandom(kind, power));
+
+          expect(question.tile).toBeLessThanOrEqual(MAX_QUESTION_NUMBER);
+          expect(newBaseQuestion.tile).toBeLessThanOrEqual(MAX_QUESTION_NUMBER);
+        }
+      }
+    }
   });
 
   it("always gives a square root with a whole number answer", () => {
