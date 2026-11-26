@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { tileColors, tileFontSize } from "./view.ts";
+import type { GameState } from "./types.ts";
+import { displayPage, tileColors, tileFontSize } from "./view.ts";
 
 // the constants tileFontSize uses, repeated here so the tests can check the
 // text really fits instead of just repeating the formula
@@ -93,5 +94,42 @@ describe("tileColors when the game is over", () => {
   it("greys out every tile", () => {
     expect(tileColors(8, 2, [], true).fill).toBe("#9e9e9e");
     expect(tileColors(2048, 2, [], true).fill).toBe("#9e9e9e");
+  });
+});
+
+// Example data: the state when a game starts, before any question
+const NEW_GAME: GameState = {
+  board: [
+    [2, 0],
+    [0, 2],
+  ],
+  score: 0,
+  status: "playing",
+  base: 2,
+  blocked: [],
+  question: null,
+  feedback: null,
+};
+const FEEDBACK = "Correct! 2^5 = 32";
+
+describe("displayPage", () => {
+  it("shows the instructions when a game starts", () => {
+    expect(displayPage(NEW_GAME)).toBe("instructions");
+  });
+
+  it("shows the question while one is up", () => {
+    expect(displayPage({ ...NEW_GAME, question: "2^5" })).toBe("question");
+  });
+
+  it("shows the feedback after an answer, so the instructions don't come back", () => {
+    expect(displayPage({ ...NEW_GAME, feedback: FEEDBACK })).toBe("feedback");
+  });
+
+  it("shows No moves left when the game is over", () => {
+    expect(displayPage({ ...NEW_GAME, status: "over", feedback: FEEDBACK })).toBe("gameOver");
+  });
+
+  it("shows the question first, even with a full board and old feedback", () => {
+    expect(displayPage({ ...NEW_GAME, question: "3^2", status: "over", feedback: FEEDBACK })).toBe("question");
   });
 });
