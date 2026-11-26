@@ -90,6 +90,7 @@ export class Minigame2View implements View {
   private answerText: Konva.Text;
   private instructionsText: Konva.Text;
   private backButton: Konva.Text;
+  private feedbackText: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -138,6 +139,12 @@ export class Minigame2View implements View {
       fill: TEXT_COLOR,
     });
     this.group.add(this.backButton);
+
+    // as tall as the page, so the feedback can sit in the middle of it
+    this.feedbackText = createDisplayText(PAGE_Y, 22, "bold");
+    this.feedbackText.height(DISPLAY_Y + DISPLAY_HEIGHT - DISPLAY_PADDING - PAGE_Y);
+    this.feedbackText.verticalAlign("middle");
+    this.group.add(this.feedbackText);
   }
 
   /**
@@ -149,8 +156,10 @@ export class Minigame2View implements View {
     this.scoreText.text(`Power level: ${state.score}`);
     this.baseText.text(`Base: ${state.base}`);
     this.questionText.text(state.question ?? "");
+    this.feedbackText.text(state.feedback ?? "");
     this.questionPage.visible(page === "question");
     this.gameOverPage.visible(page === "gameOver");
+    this.feedbackText.visible(page === "feedback");
     this.instructionsText.visible(page === "instructions");
     this.group.getLayer()?.batchDraw();
   }
@@ -252,14 +261,18 @@ export class Minigame2View implements View {
 }
 
 // Picks what the display shows under the power level and base: the question while one
-// is up, then "No moves left" when the game is over, and otherwise the instructions
-function displayPage(state: GameState): "question" | "gameOver" | "instructions" {
+// is up, then "No moves left" when the game is over, then the feedback on the last answer,
+// and the instructions before the first answer of a game
+export function displayPage(state: GameState): "question" | "gameOver" | "feedback" | "instructions" {
   // the board can be full while a question is up, so the question goes first
   if (state.question !== null) {
     return "question";
   }
   if (state.status === "over") {
     return "gameOver";
+  }
+  if (state.feedback !== null) {
+    return "feedback";
   }
   return "instructions";
 }
