@@ -89,6 +89,7 @@ export class Minigame2View implements View {
   private questionText: Konva.Text;
   private answerText: Konva.Text;
   private instructionsText: Konva.Text;
+  private backButton: Konva.Text;
 
   constructor() {
     this.group = new Konva.Group();
@@ -125,6 +126,18 @@ export class Minigame2View implements View {
     this.instructionsText = createDisplayText(PAGE_Y, 18, "normal");
     this.instructionsText.text(INSTRUCTIONS.join("\n\n"));
     this.group.add(this.instructionsText);
+
+    // the Back button is a "<" in the top left corner
+    this.backButton = new Konva.Text({
+      x: 14,
+      y: 10,
+      text: "<",
+      fontSize: 40,
+      fontStyle: "bold",
+      fontFamily: "Arial",
+      fill: TEXT_COLOR,
+    });
+    this.group.add(this.backButton);
   }
 
   /**
@@ -155,6 +168,13 @@ export class Minigame2View implements View {
    */
   onNewGameClick(handler: () => void): void {
     this.newGameButton.on("click tap", handler);
+  }
+
+  /**
+   * Runs the handler when the player clicks the Back button
+   */
+  onBackClick(handler: () => void): void {
+    this.backButton.on("click tap", handler);
   }
 
   // Draws the board's screen and the empty cells (done once)
