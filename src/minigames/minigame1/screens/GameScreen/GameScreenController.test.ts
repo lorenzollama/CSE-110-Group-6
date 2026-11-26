@@ -23,15 +23,39 @@ const viewHarness = vi.hoisted(() => {
     updateScore: vi.fn((score: number) => scores.push(score)),
     updateLives: vi.fn((value: number) => lives.push(value)),
     updateRound: vi.fn((round: number) => rounds.push(round)),
-    blink: vi.fn((_sequence: Coordinates[], callback: () => void) => {
+    blink: vi.fn((_sequence: Coordinates[], _playAudio: boolean, callback: () => void) => {
       blinkCallbacks.push(callback);
     }),
+    stopBlinking: vi.fn(),
+    onBackClick: undefined as (() => void) | undefined,
   };
 });
 
+const audioHarness = vi.hoisted(() => ({
+  instances: [] as Array<{
+    src: string;
+    currentTime: number;
+    play: ReturnType<typeof vi.fn>;
+  }>,
+}));
+
+function getAudio(filename: string) {
+  const audio = audioHarness.instances.find((audio) =>
+    audio.src.endsWith(filename)
+  );
+
+  if (!audio) {
+    throw new Error(`Audio ${filename} was not initialized`);
+  }
+
+  return audio;
+}
+
 vi.mock("./GameScreenView.ts", () => ({
   GameScreenView: class {
-    constructor(_stage: Stage) {}
+    constructor(_stage: Stage, onBackClick: () => void) {
+      viewHarness.onBackClick = onBackClick;
+    }
     setSelectionHandler(handler: (row: number, col: number) => void) {
       viewHarness.selectionHandler = handler;
     }
@@ -45,6 +69,7 @@ vi.mock("./GameScreenView.ts", () => ({
     getGrid() {
       return {
         blink: viewHarness.blink,
+        stopBlinking: viewHarness.stopBlinking,
         getRowCount: () => 3,
         getColCount: () => 3,
       };
@@ -54,6 +79,17 @@ vi.mock("./GameScreenView.ts", () => ({
 
 import { GameScreenController } from "./GameScreenController.ts";
 import { MAX_LIVES } from "../../constants.ts";
+
+class MockAudio {
+    src: string;
+    currentTime = 0;
+    play = vi.fn().mockResolvedValue(undefined);
+
+    constructor(src: string) {
+        this.src = src;
+        audioHarness.instances.push(this);
+    }
+}
 
 function makeController() {
   const screenSwitcher = { switchToScreen: vi.fn() };
@@ -73,21 +109,26 @@ function select(row: number, col: number) {
   viewHarness.selectionHandler(row, col);
 }
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.restoreAllMocks();
-});
-
 beforeEach(() => {
+  audioHarness.instances.splice(0);
+  vi.stubGlobal("Audio", MockAudio);
+
   viewHarness.selectionHandler = undefined;
   viewHarness.blinkCallbacks.splice(0);
   viewHarness.statusMessages.splice(0);
   viewHarness.scores.splice(0);
   viewHarness.lives.splice(0);
   viewHarness.rounds.splice(0);
+
   vi.clearAllMocks();
   vi.useFakeTimers();
   vi.spyOn(Math, "random").mockReturnValue(0.99);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 // user story 5
@@ -171,6 +212,128 @@ describe("GameScreenController game-over and restart properly", () => {
     // current game's playback should enable input normally
     newPlayback!();
     select(2, 2);
+    expect(viewHarness.scores.at(-1)).toBe(1);
+  });
+});
+
+// test audio
+describe("GameScreenController audio playback", () => {
+  it("plays correct.mp3 when the player selects the correct square", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const correctAudio = getAudio("correct.mp3");
+
+    select(2, 2);
+
+    expect(correctAudio.play).toHaveBeenCalledTimes(1);
+    expect(correctAudio.currentTime).toBe(0);
+  });
+
+  it("plays incorrect.mp3 when the player selects the wrong square", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const incorrectAudio = getAudio("incorrect.mp3");
+
+    select(0, 0);
+
+    expect(incorrectAudio.play).toHaveBeenCalledTimes(1);
+    expect(incorrectAudio.currentTime).toBe(0);
+  });
+
+  it("plays round_complete.mp3 after completing a round", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const roundCompleteAudio = getAudio("round_complete.mp3");
+
+    select(2, 2);
+    vi.advanceTimersByTime(1000);
+
+    expect(roundCompleteAudio.play).toHaveBeenCalledTimes(1);
+    expect(roundCompleteAudio.currentTime).toBe(0);
+  });
+
+  it("does not play incorrect.mp3 after game over", () => {
+    const { controller } = makeController();
+
+    controller.startGame();
+    playPendingSequence();
+
+    const incorrectAudio = getAudio("incorrect.mp3");
+
+    for (let life = MAX_LIVES; life > 0; life--) {
+      select(0, 0);
+
+      if (life > 1) {
+        playPendingSequence();
+        vi.advanceTimersByTime(500);
+        playPendingSequence();
+      }
+    }
+
+    expect(incorrectAudio.play).toHaveBeenCalledTimes(MAX_LIVES - 1);
+  });
+});
+describe("GameScreenController Back button", () => {
+  function clickBack() {
+    if (!viewHarness.onBackClick) throw new Error("Back handler was not registered");
+    viewHarness.onBackClick();
+  }
+
+  it("goes back to the minigame menu without recording a result", () => {
+    const { controller, screenSwitcher } = makeController();
+    controller.startGame();
+
+    clickBack();
+
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledTimes(1);
+    expect(screenSwitcher.switchToScreen).toHaveBeenCalledWith({ type: "menu" });
+    expect(viewHarness.stopBlinking).toHaveBeenCalledOnce();
+  });
+
+  it("ignores clicks on the lights after leaving", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    playPendingSequence();
+
+    clickBack();
+    select(0, 0); // would be wrong and cost a life
+
+    expect(getAudio("incorrect.mp3").play).not.toHaveBeenCalled();
+    expect(viewHarness.lives).toEqual([MAX_LIVES]); // only the start-of-game update
+  });
+
+  it("doesn't start the next round when leaving right after finishing one", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    playPendingSequence();
+    select(2, 2); // completes round 1; the next round is due in 2 seconds
+
+    clickBack();
+    vi.advanceTimersByTime(5000);
+
+    expect(getAudio("round_complete.mp3").play).not.toHaveBeenCalled();
+    expect(viewHarness.blink).toHaveBeenCalledTimes(1); // only round 1's sequence
+  });
+
+  it("can start a fresh game after leaving", () => {
+    const { controller } = makeController();
+    controller.startGame();
+    clickBack();
+    viewHarness.blinkCallbacks.splice(0); // the real grid's stopBlinking() cancels the old playback
+
+    controller.startGame();
+    playPendingSequence();
+    select(2, 2);
+
     expect(viewHarness.scores.at(-1)).toBe(1);
   });
 });

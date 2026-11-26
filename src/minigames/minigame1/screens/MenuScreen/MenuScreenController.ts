@@ -10,10 +10,10 @@ export class MenuScreenController extends ScreenController {
 	private view: MenuScreenView;
 	private screenSwitcher: ScreenSwitcher;
 
-	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
+	constructor(screenSwitcher: ScreenSwitcher, stage: Stage, onBackClick: () => void) {
 		super();
 		this.screenSwitcher = screenSwitcher;
-		this.view = new MenuScreenView(stage, () => this.handleStartClick());
+		this.view = new MenuScreenView(stage, () => this.handleStartClick(), onBackClick);
 	}
 
 	/**

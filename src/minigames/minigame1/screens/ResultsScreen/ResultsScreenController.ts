@@ -21,14 +21,13 @@ export class ResultsScreenController extends ScreenController {
 	private gameOverSound: HTMLAudioElement;
 	private pendingPersonalBestSave: Promise<void> = Promise.resolve();
 
-	constructor(screenSwitcher: ScreenSwitcher, stage: Stage) {
+	constructor(screenSwitcher: ScreenSwitcher, stage: Stage, onReturnToMenu: () => void) {
 		super();
 		this.screenSwitcher = screenSwitcher;
 		this.model = new ResultsScreenModel();
-		this.view = new ResultsScreenView(stage, () => this.handlePlayAgainClick());
+		this.view = new ResultsScreenView(stage, () => this.handlePlayAgainClick(), onReturnToMenu);
 
-		// TODO: Task 4 - Initialize game over sound audio
-		this.gameOverSound = new Audio('/gameover.mp3')
+		this.gameOverSound = new Audio('/minigame1/gameover.mp3');
 	}
 
 	/**
@@ -47,7 +46,6 @@ export class ResultsScreenController extends ScreenController {
 
 		this.view.show();
 
-		// TODO: Task 4 - Play the game over sound
 		this.gameOverSound.currentTime = 0;
 		this.gameOverSound.play();
 	}

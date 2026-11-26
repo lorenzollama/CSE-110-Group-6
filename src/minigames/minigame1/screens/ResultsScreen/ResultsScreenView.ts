@@ -1,84 +1,143 @@
 import Konva from "konva";
 import type { View } from "../../types.ts";
 import type { Stage } from "konva/lib/Stage";
+import {
+	SpaceBackdrop,
+	STAGE_WIDTH,
+	STAGE_HEIGHT,
+	makeTitle,
+	useTitleFont,
+} from "../../../../screens/shared/space.ts";
+import {
+	darkLook,
+	makePressable,
+	type Pressable,
+} from "../../../../screens/shared/pressable.ts";
 
 /**
  * ResultsScreenView - Renders the results screen
  */
 export class ResultsScreenView implements View {
 	private group: Konva.Group;
+	private content: Konva.Group;
+	private stage: Stage;
+	private sky: SpaceBackdrop;
 	private finalScoreText: Konva.Text;
-	private background: Konva.Rect;
+	private playAgainButton: Pressable;
+	private returnToMenuButton: Pressable;
 
-	constructor(stage: Stage, onPlayAgainButtonClick: () => void) {
+	constructor(stage: Stage, onPlayAgainButtonClick: () => void, onReturnToMenuClick: () => void) {
+		this.stage = stage;
 		this.group = new Konva.Group({ visible: false });
-				
-		this.background = new Konva.Rect({
-			x: 0,
-			y: 0,
-			width: stage.width(),
-			height: stage.height(),
-			fill: "black",
-			listening: false,
-		});
-		this.group.add(this.background);
+		this.content = new Konva.Group();
+
+		//placed the shared space background behind the results
+		this.sky = new SpaceBackdrop(undefined, () => this.centerLayout());
+		this.group.add(this.sky.group);
 
 		// "Game Over" title
-		const title = new Konva.Text({
-			x: stage.width() / 2,
-			y: 150,
-			text: "Game Over",
-			fontSize: 64,
-			fontFamily: "Arial",
-			stroke: "white",
-			strokeWidth: 2,
-			align: "center",
-		});
-		title.offsetX(title.width() / 2);
-		this.group.add(title);
+		const title = makeTitle("GAME OVER", 110, 48);
+		title.shadowColor("#2dd4bf");
+		this.content.add(title);
 
-		// Final score display
+		const subtitle = new Konva.Text({
+			y: 185,
+			width: STAGE_WIDTH,
+			text: "ALIEN SIGNAL MEMORY",
+			align: "center",
+			fontSize: 20,
+			fontFamily: "Arial",
+			fill: "#99f6e4",
+			listening: false,
+		});
+		this.content.add(subtitle);
+
 		this.finalScoreText = new Konva.Text({
-			x: stage.width() / 2,
 			y: 250,
+			width: STAGE_WIDTH,
 			text: "Final Score: 0",
-			fontSize: 36,
-			fontFamily: "Arial",
-			stroke: "white",
-			strokeWidth: 2,
 			align: "center",
+			fontSize: 32,
+			fontFamily: "Arial",
+			fill: "#e2e8f0",
+			listening: false,
 		});
-		this.group.add(this.finalScoreText);
+		this.content.add(this.finalScoreText);
 
-		// Play Again button (grouped) - moved down to make room for leaderboard
-		const playAgainButtonGroup = new Konva.Group();
-		const playAgainButton = new Konva.Rect({
-			x: stage.width() / 2 - 100,
-			y: 400,
-			width: 200,
-			height: 60,
-			fill: "green",
-			cornerRadius: 10,
-			stroke: "darkgreen",
-			strokeWidth: 3,
+		// Play Again returns to Minigame 1's start menu
+		this.playAgainButton = makePressable(
+			300,
+			64,
+			darkLook("#2dd4bf", "#134e4a"),
+			onPlayAgainButtonClick
+		);
+		this.playAgainButton.group.position({
+			x: (STAGE_WIDTH - 300) / 2,
+			y: 340,
 		});
-		const playAgainButtonText = new Konva.Text({
-			x: stage.width() / 2,
-			y: 415,
-			text: "Return to Menu",
-			fontSize: 24,
+
+		const playAgainLabel = new Konva.Text({
+			width: 300,
+			height: 64,
+			text: "PLAY AGAIN?",
+			align: "center",
+			verticalAlign: "middle",
+			fontSize: 22,
+			fontStyle: "bold",
 			fontFamily: "Arial",
 			fill: "white",
-			align: "center",
+			listening: false,
 		});
-		playAgainButtonText.offsetX(playAgainButtonText.width() / 2);
-		playAgainButtonGroup.add(playAgainButton);
-		playAgainButtonGroup.add(playAgainButtonText);
+		this.playAgainButton.face.add(playAgainLabel);
+		this.content.add(this.playAgainButton.group);
 
-		// Button interaction - on the group
-		playAgainButtonGroup.on("click", onPlayAgainButtonClick);
+		// Return to Menu opens the shared game-selection screen
+		this.returnToMenuButton = makePressable(
+			300,
+			64,
+			darkLook("#a5b4fc", "#312e81"),
+			onReturnToMenuClick
+		);
+		this.returnToMenuButton.group.position({
+			x: (STAGE_WIDTH - 300) / 2,
+			y: 430,
+		});
 
-		this.group.add(playAgainButtonGroup);
+		const returnToMenuLabel = new Konva.Text({
+			width: 300,
+			height: 64,
+			text: "RETURN TO MENU",
+			align: "center",
+			verticalAlign: "middle",
+			fontSize: 20,
+			fontStyle: "bold",
+			fontFamily: "Arial",
+			fill: "white",
+			listening: false,
+		});
+		this.returnToMenuButton.face.add(returnToMenuLabel);
+		this.content.add(this.returnToMenuButton.group);
+
+		this.group.add(this.content);
+
+		useTitleFont(
+			[title, playAgainLabel, returnToMenuLabel],
+			() => this.group.getLayer()?.batchDraw()
+		);
+		this.centerLayout();
+	}
+
+	/**
+	 * Centers the results and scales them to fit smaller windows
+	 */
+	private centerLayout(): void {
+		const scale = Math.min(1, this.stage.width() / STAGE_WIDTH, this.stage.height() / STAGE_HEIGHT);
+		this.content.scale({ x: scale, y: scale });
+		this.content.position({
+			x: (this.stage.width() - STAGE_WIDTH * scale) / 2,
+			y: (this.stage.height() - STAGE_HEIGHT * scale) / 2,
+		});
+		this.group.getLayer()?.batchDraw();
 	}
 
 	/**
@@ -86,8 +145,6 @@ export class ResultsScreenView implements View {
 	 */
 	updateFinalScore(score: number): void {
 		this.finalScoreText.text(`Final Score: ${score}`);
-		// Re-center after text change
-		this.finalScoreText.offsetX(this.finalScoreText.width() / 2);
 		this.group.getLayer()?.draw();
 	}
 
@@ -95,14 +152,21 @@ export class ResultsScreenView implements View {
 	 * Show the screen
 	 */
 	show(): void {
-		this.group.visible(true);
-		this.group.getLayer()?.draw();
+		if (!this.group.visible()) {
+			this.group.visible(true);
+			this.sky.start();
+		}
+		this.centerLayout();
 	}
 
 	/**
 	 * Hide the screen
 	 */
 	hide(): void {
+		this.sky.stop();
+		this.playAgainButton.reset();
+		this.returnToMenuButton.reset();
+		document.body.style.cursor = "default";
 		this.group.visible(false);
 		this.group.getLayer()?.draw();
 	}

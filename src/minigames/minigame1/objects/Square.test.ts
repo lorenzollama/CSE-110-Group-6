@@ -1,6 +1,28 @@
 import Konva from "konva";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Square } from "./Square";
+
+class MockAudio {
+    static instances: MockAudio[] = [];
+
+    currentTime = 0;
+    play = vi.fn().mockResolvedValue(undefined);
+    src: string;
+
+    constructor(src: string) {
+        this.src = src;
+        MockAudio.instances.push(this);
+    }
+}
+
+beforeEach(() => {
+    MockAudio.instances = [];
+    vi.stubGlobal("Audio", MockAudio);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe("Square creation", () => {
     let parent: Konva.Group;
@@ -228,5 +250,156 @@ describe("Square selection feedback", () => {
         square.destroy();
 
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+// blink audio
+describe("Square audio playback", () => {
+    let parent: Konva.Group;
+    let square: Square;
+
+    afterEach(() => {
+        square?.destroy();
+        parent?.destroy();
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it("creates the blink audio", () => {
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        expect(MockAudio.instances[0].src).toBe(
+            "/minigame1/blink.mp3"
+        );
+    });
+
+    it("plays audio when blinking by default", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        square.blink();
+
+        expect(MockAudio.instances[0].play).toHaveBeenCalledOnce();
+    });
+
+    it("does not play audio when playAudio is false", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        square.blink(undefined, false);
+
+        expect(MockAudio.instances[0].play).not.toHaveBeenCalled();
+    });
+
+    it("resets audio currentTime before playing", () => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent);
+
+        const audio = MockAudio.instances[0];
+        audio.currentTime = 5;
+
+        square.blink();
+
+        expect(audio.currentTime).toBe(0);
+    });
+});
+
+describe("User Story 7 - Square visual states", () => {
+    let parent: Konva.Group;
+    let square: Square;
+    let rect: Konva.Rect;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+
+        parent = new Konva.Group();
+        square = new Square(parent, { fill: "#334155" });
+        rect = parent.getChildren()[0] as Konva.Rect;
+    });
+
+    afterEach(() => {
+        square.destroy();
+        parent.destroy();
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    // User Story 7 - Test 1:
+    // hovering turns the square gray and leaving restores its idle color
+    it("shows gray on hover and restores idle when the pointer leaves", () => {
+        rect.fire("mouseenter");
+        expect(square.getFill()).toBe("gray");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 2:
+    // moving the pointer over or away from a square does not interrupt its green flash
+    it("keeps the playback flash green when the pointer enters or leaves", () => {
+        square.blink();
+
+        rect.fire("mouseenter");
+        expect(square.getFill()).toBe("lightgreen");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("lightgreen");
+
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 3:
+    // after a flash ends the square returns to gray if the pointer is still over it
+    it("restores gray after playback when the pointer remains over the square", () => {
+        rect.fire("mouseenter");
+        square.blink();
+
+        expect(square.getFill()).toBe("lightgreen");
+
+        vi.advanceTimersByTime(1000);
+        expect(square.getFill()).toBe("gray");
+
+        rect.fire("mouseleave");
+        expect(square.getFill()).toBe("#334155");
+    });
+
+    // User Story 7 - Test 4:
+    // player selections use a yellow outline while playback uses a green fill
+    it("distinguishes player selection from the green playback flash", () => {
+        square.showSelectionFeedback();
+
+        expect(square.getFill()).toBe("#334155");
+        expect(rect.stroke()).toBe("#ffd54f");
+
+        vi.advanceTimersByTime(200);
+        expect(rect.stroke()).toBe("");
+
+        square.blink();
+        expect(square.getFill()).toBe("lightgreen");
+        expect(rect.stroke()).toBe("");
+    });
+
+    // User Story 7 - Test 5:
+    // destroying a square cancels its flash timer and prevents its completion callback
+    it("cancels pending playback when the square is destroyed", () => {
+        const onComplete = vi.fn();
+
+        square.blink(onComplete);
+        vi.advanceTimersByTime(500);
+
+        square.destroy();
+        vi.advanceTimersByTime(1000);
+
+        expect(onComplete).not.toHaveBeenCalled();
     });
 });
