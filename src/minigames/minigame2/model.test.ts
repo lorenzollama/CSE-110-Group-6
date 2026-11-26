@@ -19,15 +19,16 @@ import type { Board, Direction, GameState } from "./types.ts";
 const POWER_QUESTION = { text: "2^5", answer: 32, tile: 32 };
 const NEW_BASE_QUESTION = { text: "3^2", answer: 9, tile: 9, newBase: 3 };
 
+// the last number is the score: the power of each new tile, so a 4 (2^2) scores 2 and an 8 (2^3) scores 3
 const cases: Array<[number[], number[], number]> = [
-  [[2, 2, 4, 4], [4, 8, 0, 0], 12],
-  [[2, 2, 2, 2], [4, 4, 0, 0], 8],
-  [[2, 2, 2, 0], [4, 2, 0, 0], 4],
-  [[4, 4, 8, 0], [8, 8, 0, 0], 8],
-  [[2, 0, 2, 4], [4, 4, 0, 0], 4],
+  [[2, 2, 4, 4], [4, 8, 0, 0], 5],
+  [[2, 2, 2, 2], [4, 4, 0, 0], 4],
+  [[2, 2, 2, 0], [4, 2, 0, 0], 2],
+  [[4, 4, 8, 0], [8, 8, 0, 0], 3],
+  [[2, 0, 2, 4], [4, 4, 0, 0], 2],
   [[0, 0, 0, 2], [2, 0, 0, 0], 0],
   [[0, 0, 0, 0], [0, 0, 0, 0], 0],
-  [[2, 2, 4, 8], [4, 4, 8, 0], 4],
+  [[2, 2, 4, 8], [4, 4, 8, 0], 2],
   [[2, 4, 2, 4], [2, 4, 2, 4], 0],
 ];
 
@@ -174,7 +175,7 @@ describe("Game.newGame", () => {
       [0, 0, 0, 0],
       [0, 0, 0, 16],
     ]);
-    expect(game.move("left").score).toBe(4);
+    expect(game.move("left").score).toBe(2);
 
     const state = game.newGame();
 
@@ -194,7 +195,7 @@ describe("Game.move", () => {
     ];
   }
 
-  // the same start board moved each way: one pair of 2s merges, so every move scores 4.
+  // the same start board moved each way: one pair of 2s merges into a 4 (2^2), so every move scores 2.
   // each result also has a new 2 in the first empty cell (reading order)
   const directionCases: Array<[Direction, Board]> = [
     ["left", [[4, 4, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0]]],
@@ -208,7 +209,7 @@ describe("Game.move", () => {
       const state = gameWithBoard(startBoard()).move(direction);
 
       expect(state.board).toEqual(expected);
-      expect(state.score).toBe(4);
+      expect(state.score).toBe(2);
     });
 
     // checks both moves: if move() changed some shared state, one of the two would be wrong
@@ -240,8 +241,8 @@ describe("Game.move", () => {
       [4, 0, 0, 0],
     ]);
 
-    expect(game.move("left").score).toBe(4); // 2 + 2
-    expect(game.move("up").score).toBe(12); // then 4 + 4
+    expect(game.move("left").score).toBe(2); // the two 2s make a 4, which is 2^2
+    expect(game.move("up").score).toBe(5); // then the two 4s make an 8, which is 2^3
   });
 
   it("changes nothing when no tile can move that way", () => {
@@ -771,11 +772,11 @@ describe("a game in base 3", () => {
     ];
   }
 
-  it("merges two 9s into a 27 and scores 27", () => {
+  it("merges two 9s into a 27 and scores 3, because 27 is 3^3", () => {
     const state = gameWithBoard(nineBoard(), fakeRandom(0, 0.5), 3).move("left");
 
     expect(state.board[0][0]).toBe(27);
-    expect(state.score).toBe(27);
+    expect(state.score).toBe(3);
   });
 
   it("makes the new tile a 3 or a 9", () => {
@@ -789,7 +790,12 @@ describe("a game in base 3", () => {
 
 describe("bases and blocked tiles", () => {
   it("in base 3, 3 3 9 0 becomes 9 9 0 0", () => {
-    expect(slideLine([3, 3, 9, 0], [], 3)).toEqual({ line: [9, 9, 0, 0], gained: 9 });
+    expect(slideLine([3, 3, 9, 0], [], 3)).toEqual({ line: [9, 9, 0, 0], gained: 2 });
+  });
+
+  it("in base 9, merging two 6561s into 59049 scores 5", () => {
+    // log(59049) / log(9) comes out a tiny bit under 5, so this checks that the power gets rounded
+    expect(slideLine([6561, 6561, 0, 0], [], 9)).toEqual({ line: [59049, 0, 0, 0], gained: 5 });
   });
 
   it("with 32 blocked, 32 32 0 0 stays the same", () => {

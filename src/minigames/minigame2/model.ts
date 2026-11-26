@@ -217,7 +217,8 @@ function clear(): number[][] {
   return Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
 }
 
-// update array after slide 
+// update array after slide. Each merge scores the new tile's power, not its value
+// (making 2^5 = 32 scores 5), so the score doesn't jump into the millions
 export function slideLine(line: number[], blocked: number[] = [], base: number = START_BASE): { line: number[]; gained: number } {
   const size = line.length;
   let gained: number = 0;
@@ -227,7 +228,7 @@ export function slideLine(line: number[], blocked: number[] = [], base: number =
   for (let i: number = 0; i < line.length-1; i++){
     if (canMerge(line[i], line[i + 1], blocked)) {
       line[i] *= base;
-      gained += line[i];
+      gained += powerOf(line[i], base);
       line.splice(i + 1, 1);
     }
   }
@@ -304,8 +305,11 @@ export function convertTile(tile: number, oldBase: number, newBase: number): num
   if (tile === 0) {
     return 0;
   }
+  return newBase ** powerOf(tile, oldBase);
+}
 
+// which power of the base the tile is (32 is 2^5, so 5)
+function powerOf(tile: number, base: number): number {
   // round it because the division can come out a tiny bit off, like 3.0000000000000004
-  const power = Math.round(Math.log(tile) / Math.log(oldBase));
-  return newBase ** power;
+  return Math.round(Math.log(tile) / Math.log(base));
 }
