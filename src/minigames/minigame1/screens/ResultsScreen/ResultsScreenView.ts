@@ -57,7 +57,7 @@ export class ResultsScreenView implements View {
 			width: STAGE_WIDTH,
 			text: "Final Score: 0",
 			align: "center",
-			fontSize: 32,
+			fontSize: 28,
 			fontFamily: "Arial",
 			fill: "#e2e8f0",
 			listening: false,
@@ -121,7 +121,7 @@ export class ResultsScreenView implements View {
 		this.group.add(this.content);
 
 		useTitleFont(
-			[title, playAgainLabel, returnToMenuLabel],
+			[title, subtitle, this.finalScoreText, playAgainLabel, returnToMenuLabel],
 			() => this.group.getLayer()?.batchDraw()
 		);
 		this.centerLayout();

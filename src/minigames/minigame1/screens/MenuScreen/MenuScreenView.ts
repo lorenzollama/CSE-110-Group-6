@@ -46,7 +46,7 @@ export class MenuScreenView implements View {
 			width: STAGE_WIDTH,
 			text: "No personal best yet",
 			align: "center",
-			fontSize: 22,
+			fontSize: 20,
 			fontFamily: "Arial",
 			fill: "#99f6e4",
 			listening: false,
@@ -59,7 +59,7 @@ export class MenuScreenView implements View {
 			width: STAGE_WIDTH - 160,
 			text: "Watch the lights, then repeat their order.\nEach completed round adds one signal.",
 			align: "center",
-			fontSize: 20,
+			fontSize: 17,
 			lineHeight: 1.5,
 			fontFamily: "Arial",
 			fill: "#e2e8f0",
@@ -102,7 +102,7 @@ export class MenuScreenView implements View {
 		this.group.add(this.backButton.group);
 
 		useTitleFont(
-			[title, startLabel, back.label],
+			[title, startLabel, back.label, this.personalBestText, instructions],
 			() => this.group.getLayer()?.batchDraw()
 		);
 		this.centerLayout();

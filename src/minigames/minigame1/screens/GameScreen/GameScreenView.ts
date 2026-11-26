@@ -48,7 +48,7 @@ export class GameScreenView implements View {
 			width: 200,
 			text: "Lives: 0",
 			align: "center",
-			fontSize: 24,
+			fontSize: 20,
 			fontFamily: "Arial",
 			fill: "#e2e8f0",
 			listening: false,
@@ -60,7 +60,7 @@ export class GameScreenView implements View {
 			width: 200,
 			text: "Round 1",
 			align: "center",
-			fontSize: 24,
+			fontSize: 20,
 			fontFamily: "Arial",
 			fill: "#99f6e4",
 			listening: false,
@@ -72,7 +72,7 @@ export class GameScreenView implements View {
 			width: 200,
 			text: "Score: 0",
 			align: "center",
-			fontSize: 24,
+			fontSize: 20,
 			fontFamily: "Arial",
 			fill: "#e2e8f0",
 			listening: false,
@@ -90,7 +90,7 @@ export class GameScreenView implements View {
 			width: STAGE_WIDTH - 80,
 			text: "",
 			align: "center",
-			fontSize: 20,
+			fontSize: 18,
 			lineHeight: 1.2,
 			fontFamily: "Arial",
 			fill: "#e2e8f0",
@@ -141,7 +141,7 @@ export class GameScreenView implements View {
 		this.group.add(this.backButton.group);
 
 		useTitleFont(
-			[title, back.label],
+			[title, back.label, this.livesText, this.roundText, this.scoreText, this.statusText],
 			() => this.group.getLayer()?.batchDraw()
 		);
 		this.centerLayout();
