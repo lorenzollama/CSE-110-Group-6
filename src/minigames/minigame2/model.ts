@@ -42,6 +42,7 @@ export class Game implements GameLogic {
   private base: number = START_BASE;
   private blocked: number[] = [];
   private question: Question | null = null;
+  private feedback: string | null = null;
   private turnsLeft: number = turnsUntilQuestion();
   private questionsLeft: number = QUESTIONS_BEFORE_NEW_BASE;
   private random: () => number;
@@ -70,6 +71,7 @@ export class Game implements GameLogic {
       base: this.base,
       blocked: this.blocked,
       question: this.question === null ? null : this.question.text,
+      feedback: this.feedback,
     };
   }
 
@@ -100,6 +102,7 @@ export class Game implements GameLogic {
     this.base = START_BASE;
     this.blocked = [];
     this.question = null;
+    this.feedback = null;
     this.turnsLeft = turnsUntilQuestion();
     this.questionsLeft = QUESTIONS_BEFORE_NEW_BASE;
     this.addRandomTile();
@@ -139,21 +142,25 @@ export class Game implements GameLogic {
     return this.getState();
   }
 
-  // check the player's answer, clear the question and start the count over
+  // check the player's answer, say how it went, clear the question and start the count over
   answer(value: number): GameState {
     if (this.question === null) {
       return this.getState();
     }
+
+    const correct = value === this.question.answer;
 
     if (this.question.newBase !== undefined) {
       this.changeBase(this.question.newBase);
     }
 
     // this comes after changing the base, so a wrong answer only blocks the new tile
-    if (value !== this.question.answer) {
+    if (!correct) {
       this.blocked.push(this.question.tile);
     }
 
+    // the feedback stays until the next answer, so moves don't clear it
+    this.feedback = makeFeedback(this.question, correct);
     this.question = null;
     this.turnsLeft = turnsUntilQuestion();
     return this.getState();
@@ -277,6 +284,19 @@ export function makeNewBaseQuestion(base: number, random: () => number): Questio
   const power = pickRandom(NEW_BASE_POWERS, random);
   const tile = newBase ** power;
   return { text: `${newBase}^${power}`, answer: tile, tile, newBase };
+}
+
+// what to show after an answer: if it was right, the right answer, and what changed on the board.
+// Kept short (under about 150 characters) so it fits on the side screen
+function makeFeedback(question: Question, correct: boolean): string {
+  const parts = [`${correct ? "Correct!" : "Not quite."} ${question.text} = ${question.answer}.`];
+  if (question.newBase !== undefined) {
+    parts.push(`The board is now in base ${question.newBase}.`);
+  }
+  if (!correct) {
+    parts.push(`Tiles of ${question.tile} can't merge now.`);
+  }
+  return parts.join(" ");
 }
 
 // keep the tile's power in the new base (32 is 2^5, so in base 3 it becomes 3^5 = 243)

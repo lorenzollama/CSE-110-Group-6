@@ -156,6 +156,7 @@ describe("Game.newGame", () => {
       base: 2,
       blocked: [],
       question: null,
+      feedback: null,
     });
   });
 
@@ -327,6 +328,79 @@ describe("Game questions", () => {
     game.newGame();
 
     expect(playTurns(game, turnsUntilQuestion() - 1).question).toBeNull();
+  });
+});
+
+describe("feedback", () => {
+  // the side screen fits about this many characters
+  const MAX_FEEDBACK_LENGTH = 150;
+
+  it("is null until the first answer, so the side screen can show the instructions", () => {
+    const game = startedGame();
+
+    expect(game.newGame().feedback).toBeNull();
+    expect(playTurns(game, turnsUntilQuestion()).feedback).toBeNull();
+  });
+
+  it("says a right answer was right", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(32).feedback).toBe("Correct! 2^5 = 32.");
+  });
+
+  it("gives the right answer and the blocked tile after a wrong answer", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+
+    expect(game.answer(30).feedback).toBe("Not quite. 2^5 = 32. Tiles of 32 can't merge now.");
+  });
+
+  it("gives the root as the answer and the number under it as the blocked tile", () => {
+    const game = startedGame();
+    game.setQuestion({ text: "√64", answer: 8, tile: 64 });
+
+    expect(game.answer(32).feedback).toBe("Not quite. √64 = 8. Tiles of 64 can't merge now.");
+  });
+
+  it("says when the board changes to a new base", () => {
+    const right = startedGame();
+    right.setQuestion(NEW_BASE_QUESTION);
+    const wrong = startedGame();
+    wrong.setQuestion(NEW_BASE_QUESTION);
+
+    expect(right.answer(9).feedback).toBe("Correct! 3^2 = 9. The board is now in base 3.");
+    expect(wrong.answer(8).feedback).toBe(
+      "Not quite. 3^2 = 9. The board is now in base 3. Tiles of 9 can't merge now.",
+    );
+  });
+
+  it("stays through moves until the next answer", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(32);
+
+    expect(playTurns(game, turnsUntilQuestion()).feedback).toBe("Correct! 2^5 = 32.");
+    expect(game.answer(0).feedback).not.toBe("Correct! 2^5 = 32.");
+  });
+
+  it("goes back to null on a new game", () => {
+    const game = startedGame();
+    game.setQuestion(POWER_QUESTION);
+    game.answer(32);
+
+    expect(game.newGame().feedback).toBeNull();
+  });
+
+  it("fits on the side screen even for the longest question", () => {
+    // 9^3 is the biggest new base question, and a wrong answer adds the most text
+    const game = startedGame();
+    game.setQuestion(makeNewBaseQuestion(2, fakeRandom(0.99, 0.99)));
+    const longestSquareRoot = startedGame();
+    longestSquareRoot.setQuestion(makeQuestion(9, fakeRandom(0, 0.99))); // √531441
+
+    expect(game.answer(0).feedback!.length).toBeLessThanOrEqual(MAX_FEEDBACK_LENGTH);
+    expect(longestSquareRoot.answer(0).feedback!.length).toBeLessThanOrEqual(MAX_FEEDBACK_LENGTH);
   });
 });
 

@@ -50,7 +50,7 @@ class App implements ScreenSwitcher {
     this.gameLayer = new Konva.Layer();
     this.gameLayer.add(this.scrapShooter.getView().getGroup());
 
-    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View());
+    this.minigame2 = new Minigame2Controller(new Game(), new Minigame2View(), this);
     this.gameLayer.add(this.minigame2.getView().getGroup());
     this.minigame2.hide();
     this.gameLayer.hide();
@@ -60,6 +60,16 @@ class App implements ScreenSwitcher {
     this.minigame1Layer = new Konva.Layer();
     this.stage.add(this.minigame1Layer);
     this.minigame1 = new Minigame1Controller(this.stage, this.minigame1Layer, () => this.switchToScreen({ type: "menu"}));
+
+    this.screenLayer.add(
+      new Konva.Text({
+        x: 20,
+        y: 20,
+        text: "CSE 110 Group 6 - shared skeleton",
+        fontSize: 24,
+        fontFamily: "Arial",
+      }),
+    );
 
     this.startController = new StartController(this);
     this.screenLayer.add(this.startController.getView().getGroup());
