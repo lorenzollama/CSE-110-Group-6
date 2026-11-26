@@ -19,6 +19,9 @@ const SQUARE_ROOT_CHANCE = 0.5;
 const QUESTION_POWERS = [2, 3, 4, 5, 6];
 // only even powers, so the answer is a whole number (64 is 2^6, so √64 is 2^3)
 const SQUARE_ROOT_POWERS = [2, 4, 6];
+// the biggest number a question can use, so it can be worked out in your head. Big bases
+// only get small powers: 2 still goes up to 2^6 = 64, but 9 only gets 9^2 and 9^3
+export const MAX_QUESTION_NUMBER = 1000;
 // how many questions come before the next one brings a new base
 export const QUESTIONS_BEFORE_NEW_BASE = 3;
 // the bases the board can change to
@@ -217,7 +220,8 @@ function clear(): number[][] {
   return Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
 }
 
-// update array after slide 
+// update array after slide. Each merge scores the new tile's power, not its value
+// (making 2^5 = 32 scores 5), so the score doesn't jump into the millions
 export function slideLine(line: number[], blocked: number[] = [], base: number = START_BASE): { line: number[]; gained: number } {
   const size = line.length;
   let gained: number = 0;
@@ -227,7 +231,7 @@ export function slideLine(line: number[], blocked: number[] = [], base: number =
   for (let i: number = 0; i < line.length-1; i++){
     if (canMerge(line[i], line[i + 1], blocked)) {
       line[i] *= base;
-      gained += line[i];
+      gained += powerOf(line[i], base);
       line.splice(i + 1, 1);
     }
   }
@@ -265,15 +269,21 @@ function pickRandom(list: number[], random: () => number): number {
   return list[Math.floor(random() * list.length)];
 }
 
+// the powers from the list that keep base^power within MAX_QUESTION_NUMBER.
+// Every base squared fits, so there is always at least one
+function powersThatFit(powers: number[], base: number): number[] {
+  return powers.filter(power => base ** power <= MAX_QUESTION_NUMBER);
+}
+
 // make a random question for the base, either a power like 2^5 or a square root like √64
 export function makeQuestion(base: number, random: () => number): Question {
   if (random() < SQUARE_ROOT_CHANCE) {
-    const power = pickRandom(SQUARE_ROOT_POWERS, random);
+    const power = pickRandom(powersThatFit(SQUARE_ROOT_POWERS, base), random);
     const tile = base ** power;
     return { text: `√${tile}`, answer: base ** (power / 2), tile };
   }
 
-  const power = pickRandom(QUESTION_POWERS, random);
+  const power = pickRandom(powersThatFit(QUESTION_POWERS, base), random);
   const tile = base ** power;
   return { text: `${base}^${power}`, answer: tile, tile };
 }
@@ -281,7 +291,7 @@ export function makeQuestion(base: number, random: () => number): Question {
 // make a question about a low power of a new random base that isn't the current one
 export function makeNewBaseQuestion(base: number, random: () => number): Question {
   const newBase = pickRandom(BASES.filter(b => b !== base), random);
-  const power = pickRandom(NEW_BASE_POWERS, random);
+  const power = pickRandom(powersThatFit(NEW_BASE_POWERS, newBase), random);
   const tile = newBase ** power;
   return { text: `${newBase}^${power}`, answer: tile, tile, newBase };
 }
@@ -304,8 +314,11 @@ export function convertTile(tile: number, oldBase: number, newBase: number): num
   if (tile === 0) {
     return 0;
   }
+  return newBase ** powerOf(tile, oldBase);
+}
 
+// which power of the base the tile is (32 is 2^5, so 5)
+function powerOf(tile: number, base: number): number {
   // round it because the division can come out a tiny bit off, like 3.0000000000000004
-  const power = Math.round(Math.log(tile) / Math.log(oldBase));
-  return newBase ** power;
+  return Math.round(Math.log(tile) / Math.log(base));
 }
