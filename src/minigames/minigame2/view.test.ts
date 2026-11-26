@@ -3,7 +3,7 @@ import { tileColors, tileFontSize } from "./view.ts";
 
 // the constants tileFontSize uses, repeated here so the tests can check the
 // text really fits instead of just repeating the formula
-const DIGIT_WIDTH = 0.6;
+const DIGIT_WIDTH = 0.84;
 const MAX_TEXT_WIDTH = 0.85;
 
 // how wide a number is drawn at this font size, using the same digit estimate as the view

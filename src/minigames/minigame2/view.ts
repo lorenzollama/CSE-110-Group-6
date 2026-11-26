@@ -2,6 +2,8 @@ import Konva from "konva";
 import type { View } from "../../types.ts";
 import { GRID_SIZE, STAGE_HEIGHT, STAGE_WIDTH } from "./constants.ts";
 import type { GameState } from "./types.ts";
+import { GAME_FONT, SpaceBackdrop, useTitleFont } from "../../screens/shared/space.ts";
+import { makeBackButton, type Pressable } from "../../screens/shared/pressable.ts";
 
 // Board layout, in pixels. The board is on the left and the display is on the right.
 // The tile size is worked out from GRID_SIZE so the whole board fits.
@@ -25,7 +27,7 @@ const FRAME_COLOR = "#cbd5e1";
 const FRAME = 8; // how thick the frame is
 const TEXT_COLOR = "#2b2d42";
 const SCREEN_TEXT_COLOR = "#e2e8f0"; // light text on the screens
-const WALL_COLOR = "#f1f5f9"; // off-white, like the inside of a modern spaceship
+const BACK_MARGIN = 20; // gap between the Back button and the window's top-left corner
 
 // The display, right of the board and as tall as it. The power level and base are
 // always at the top, and the page under them shows one thing at a time.
@@ -89,12 +91,16 @@ export class Minigame2View implements View {
   private questionText: Konva.Text;
   private answerText: Konva.Text;
   private instructionsText: Konva.Text;
-  private backButton: Konva.Text;
+  private sky: SpaceBackdrop;
+  private backButton: Pressable;
+  private backHandler: (() => void) | null = null;
 
   constructor() {
     this.group = new Konva.Group();
-    // the wall goes first, so it is behind everything
-    this.group.add(new Konva.Rect({ width: STAGE_WIDTH, height: STAGE_HEIGHT, fill: WALL_COLOR }));
+    // the night sky goes first, so it is behind everything. It fills the whole window,
+    // and tells us where the window's corner is so Back can sit there.
+    this.sky = new SpaceBackdrop(undefined, (_width, _height, left, top) => this.placeBackButton(left, top));
+    this.group.add(this.sky.group);
     this.drawEmptyGrid();
 
     // tiles get their own group so they can be cleared and redrawn after every move
@@ -103,7 +109,7 @@ export class Minigame2View implements View {
 
     this.group.add(createSign());
     this.group.add(createScreen(DISPLAY_X, DISPLAY_Y, DISPLAY_WIDTH, DISPLAY_HEIGHT));
-    this.scoreText = createDisplayText(DISPLAY_Y + 20, 26, "bold");
+    this.scoreText = createDisplayText(DISPLAY_Y + 20, 22, "bold");
     this.baseText = createDisplayText(DISPLAY_Y + 56, 20, "normal");
     this.group.add(this.scoreText, this.baseText);
     // a line between them and the page
@@ -123,21 +129,20 @@ export class Minigame2View implements View {
     this.questionPage = createQuestionPage(this.questionText, this.answerText);
     this.group.add(this.questionPage);
 
-    this.instructionsText = createDisplayText(PAGE_Y, 18, "normal");
+    this.instructionsText = createDisplayText(PAGE_Y, 15, "normal");
     this.instructionsText.text(INSTRUCTIONS.join("\n\n"));
     this.group.add(this.instructionsText);
 
-    // the Back button is a "<" in the top left corner
-    this.backButton = new Konva.Text({
-      x: 14,
-      y: 10,
-      text: "<",
-      fontSize: 40,
-      fontStyle: "bold",
-      fontFamily: "Arial",
-      fill: TEXT_COLOR,
-    });
-    this.group.add(this.backButton);
+    // the same Back button as the other screens, in the window's top-left corner
+    const back = makeBackButton(() => this.backHandler?.());
+    back.label.fontFamily(GAME_FONT);
+    this.backButton = back.button;
+    this.group.add(this.backButton.group);
+    this.placeBackButton(0, 0); // until it's on screen and knows the window size
+
+    // Orbitron may still be loading, and Konva works out where text wraps when it's set.
+    // Switching the font again once it's in makes the text wrap to Orbitron's wider letters.
+    useTitleFont(this.group.find<Konva.Text>("Text"), () => this.group.getLayer()?.batchDraw());
   }
 
   /**
@@ -174,7 +179,12 @@ export class Minigame2View implements View {
    * Runs the handler when the player clicks the Back button
    */
   onBackClick(handler: () => void): void {
-    this.backButton.on("click tap", handler);
+    this.backHandler = handler;
+  }
+
+  /** Puts the Back button in the window's top-left corner (`left`, `top` is that corner). */
+  private placeBackButton(left: number, top: number): void {
+    this.backButton.group.position({ x: left + BACK_MARGIN, y: top + BACK_MARGIN });
   }
 
   // Draws the board's screen and the empty cells (done once)
@@ -227,7 +237,7 @@ export class Minigame2View implements View {
           text: String(value),
           fontSize: tileFontSize(value),
           fontStyle: "bold",
-          fontFamily: "Arial",
+          fontFamily: GAME_FONT,
           fill: colors.text,
           align: "center",
           verticalAlign: "middle",
@@ -242,10 +252,16 @@ export class Minigame2View implements View {
 
   show(): void {
     this.group.visible(true);
+    this.sky.start();
     this.group.getLayer()?.batchDraw();
   }
 
   hide(): void {
+    this.sky.stop();
+    // a clicked button is hidden while the mouse is still on it, so its "mouse left" never
+    // comes: put Back and the cursor back to normal for next time
+    this.backButton.reset();
+    document.body.style.cursor = "default";
     this.group.visible(false);
     this.group.getLayer()?.batchDraw();
   }
@@ -295,7 +311,7 @@ function cellPosition(row: number, col: number): { x: number; y: number } {
 // Tile number sizing, as fractions of the tile's width
 const MAX_TEXT_HEIGHT = 0.5; // a number is never taller than half the tile
 const MAX_TEXT_WIDTH = 0.85; // leaves a little padding on the left and right
-const DIGIT_WIDTH = 0.6; // a bold Arial digit is about 0.6 times as wide as the font size
+const DIGIT_WIDTH = 0.84; // the widest bold Orbitron digit is about 0.84 times the font size
 
 /**
  * The font size that fits a tile's number inside the tile.
@@ -324,7 +340,7 @@ function createNewGameButton(): Konva.Group {
     height,
     text: "New game",
     fontSize: 24,
-    fontFamily: "Arial",
+    fontFamily: GAME_FONT,
     fill: "white",
     align: "center",
     verticalAlign: "middle",
@@ -365,7 +381,7 @@ function createDisplayText(y: number, fontSize: number, fontStyle: string): Konv
     text: "",
     fontSize,
     fontStyle,
-    fontFamily: "Arial",
+    fontFamily: GAME_FONT,
     lineHeight: 1.25,
     fill: SCREEN_TEXT_COLOR,
     align: "center",
@@ -391,7 +407,7 @@ function createSign(): Konva.Group {
     text: "POWER SYSTEM",
     fontSize: 24,
     fontStyle: "bold",
-    fontFamily: "Arial",
+    fontFamily: GAME_FONT,
     letterSpacing: 4,
     fill: TEXT_COLOR,
     align: "center",
