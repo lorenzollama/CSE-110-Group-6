@@ -27,6 +27,8 @@ const FRAME_COLOR = "#cbd5e1";
 const FRAME = 8; // how thick the frame is
 const TEXT_COLOR = "#2b2d42";
 const SCREEN_TEXT_COLOR = "#e2e8f0"; // light text on the screens
+const RIGHT_COLOR = "#4ade80"; // green feedback after a right answer
+const WRONG_COLOR = "#f87171"; // red feedback after a wrong one
 const BACK_MARGIN = 20; // gap between the Back button and the window's top-left corner
 
 // The display, right of the board and as tall as it. The power level and base are
@@ -91,6 +93,7 @@ export class Minigame2View implements View {
   private questionText: Konva.Text;
   private answerText: Konva.Text;
   private instructionsText: Konva.Text;
+  private feedbackText: Konva.Text;
   private sky: SpaceBackdrop;
   private backButton: Pressable;
   private backHandler: (() => void) | null = null;
@@ -133,6 +136,11 @@ export class Minigame2View implements View {
     this.instructionsText.text(INSTRUCTIONS.join("\n\n"));
     this.group.add(this.instructionsText);
 
+    // how the last answer went, shown in place of the instructions after the first answer
+    this.feedbackText = createDisplayText(PAGE_Y + 20, 18, "bold");
+    this.feedbackText.lineHeight(1.5);
+    this.group.add(this.feedbackText);
+
     // the same Back button as the other screens, in the window's top-left corner
     const back = makeBackButton(() => this.backHandler?.());
     back.label.fontFamily(GAME_FONT);
@@ -157,6 +165,11 @@ export class Minigame2View implements View {
     this.questionPage.visible(page === "question");
     this.gameOverPage.visible(page === "gameOver");
     this.instructionsText.visible(page === "instructions");
+    this.feedbackText.visible(page === "feedback");
+    if (state.feedback !== null) {
+      this.feedbackText.text(state.feedback);
+      this.feedbackText.fill(state.feedback.startsWith("Correct") ? RIGHT_COLOR : WRONG_COLOR);
+    }
     this.group.getLayer()?.batchDraw();
   }
 
@@ -268,14 +281,18 @@ export class Minigame2View implements View {
 }
 
 // Picks what the display shows under the power level and base: the question while one
-// is up, then "No moves left" when the game is over, and otherwise the instructions
-function displayPage(state: GameState): "question" | "gameOver" | "instructions" {
+// is up, then "No moves left" when the game is over, then how the last answer went, and
+// before the first answer the instructions
+function displayPage(state: GameState): "question" | "gameOver" | "feedback" | "instructions" {
   // the board can be full while a question is up, so the question goes first
   if (state.question !== null) {
     return "question";
   }
   if (state.status === "over") {
     return "gameOver";
+  }
+  if (state.feedback !== null) {
+    return "feedback";
   }
   return "instructions";
 }
